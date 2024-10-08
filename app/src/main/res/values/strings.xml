@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Betamotor</string>
+    <string name="connection_timeout">Connection Timeout</string>
+    <string name="nearby_bike">Nearby Bike</string>
+    <string name="no_name">No Name</string>
+    <string name="done">Done</string>
+    <string name="bt_location_request">Attention</string>
+    <string name="bt_location_request_usage">You need to turn on Bluetooth and Location of this device to access the BLE Device</string>
+</resources>
