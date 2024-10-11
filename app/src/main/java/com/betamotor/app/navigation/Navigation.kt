@@ -9,6 +9,7 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.betamotor.app.presentation.screen.DetailDeviceScreen
 import com.betamotor.app.presentation.screen.MainScreen
 import com.betamotor.app.presentation.screen.ScanDeviceScreen
 import com.betamotor.app.presentation.screen.SplashScreen
@@ -79,6 +80,16 @@ fun Navigation() {
             popEnterTransition = popEnterTransition
         ) {
             ScanDeviceScreen(navController)
+        }
+
+        composable(
+            route = Screen.DetailDevice.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            DetailDeviceScreen(navController)
         }
     }
 }

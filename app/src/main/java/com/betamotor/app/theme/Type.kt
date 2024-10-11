@@ -12,7 +12,8 @@ import com.betamotor.app.R
 val RobotoCondensed = FontFamily(
     Font(R.font.roboto_condensed_regular),
     Font(R.font.roboto_condensed_medium, FontWeight.Medium),
-    Font(R.font.roboto_condensed_semibold, FontWeight.SemiBold)
+    Font(R.font.roboto_condensed_semibold, FontWeight.SemiBold),
+    Font(R.font.roboto_condensed_thin, FontWeight.Thin)
 )
 
 // Set of Material typography styles to start with
@@ -44,13 +45,13 @@ val Typography = Typography(
     body1 = TextStyle(
         fontFamily = RobotoCondensed,
         fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
+        fontSize = 24.sp,
         color = White
     ),
     body2 = TextStyle(
         fontFamily = RobotoCondensed,
         fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
+        fontSize = 18.sp,
         color = White
     ),
     caption = TextStyle(

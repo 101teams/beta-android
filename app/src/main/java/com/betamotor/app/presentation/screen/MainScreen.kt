@@ -90,6 +90,8 @@ fun MainScreen(
 
         if (isBluetoothEnabled && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             navController.navigate(Screen.ScanDevice.route)
+
+//            navController.navigate(Screen.DetailDevice.route)
             return
         }
     }

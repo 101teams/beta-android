@@ -52,6 +52,7 @@ import androidx.navigation.NavController
 import com.betamotor.app.R
 import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.findActivity
+import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.CheckPermission
 import com.betamotor.app.presentation.component.NetworkItem
 import com.betamotor.app.presentation.component.PermissionNeededDialog
@@ -230,10 +231,10 @@ fun ScanDeviceScreen(
                 isConnecting = isConnecting.value,
                 selectedDevice = selectedDevice.value,
                 onClick = {
-                    selectedDevice.value = it
-//                showDialog.value = true
-                    isConnecting.value = true
-                    connect(it)
+//                    selectedDevice.value = it
+//                    isConnecting.value = true
+//                    connect(it)
+                    navController.navigate(Screen.DetailDevice.route)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
