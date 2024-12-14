@@ -31,6 +31,11 @@ interface BluetoothController {
 
     fun disconnectDevice()
     fun sendCommand(command: String)
+    fun sendCommandByteSCS(command: ByteArray)
+    fun sendCommandByteDES(command: ByteArray)
+    fun onReadDataDES(
+        onDataReceived: (Byte, ByteArray) -> Unit
+    )
     fun toggleWifi(
         flag: Boolean,
         ssid: String = "",

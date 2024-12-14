@@ -25,7 +25,10 @@ import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -39,6 +42,7 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.betamotor.app.R
 import com.betamotor.app.navigation.Screen
+import com.betamotor.app.presentation.component.PermissionNeededDialog
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.White
@@ -51,11 +55,9 @@ fun MainScreen(
 
     val bluetoothManager by lazy { context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager }
     val bluetoothAdapter by lazy { bluetoothManager?.adapter }
-    val isBluetoothEnabled: Boolean = remember(bluetoothAdapter?.isEnabled) {
-        bluetoothAdapter?.isEnabled == true
-    }
 
     val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -88,12 +90,13 @@ fun MainScreen(
             return
         }
 
-        if (isBluetoothEnabled && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        if (bluetoothAdapter?.isEnabled != null && bluetoothAdapter?.isEnabled!! && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             navController.navigate(Screen.ScanDevice.route)
-
 //            navController.navigate(Screen.DetailDevice.route)
             return
         }
+
+        showPermissionDialog = true
     }
 
     Box (
@@ -155,6 +158,12 @@ fun MainScreen(
                         color = White,
                     )
                 }
+            }
+        }
+
+        if (showPermissionDialog) {
+            PermissionNeededDialog {
+                showPermissionDialog = false
             }
         }
     }

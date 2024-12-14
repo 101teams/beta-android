@@ -6,6 +6,7 @@ import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.betamotor.app.R
+import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.DarkBlue
 
 @Composable
@@ -19,8 +20,8 @@ fun PermissionNeededDialog(
                 Text(stringResource(R.string.done), color = DarkBlue)
             }
         }, title = {
-            Text(stringResource(id = R.string.bt_location_request))
+            Text(stringResource(id = R.string.bt_location_request), color = Black)
         }, text = {
-            Text(stringResource(id = R.string.bt_location_request_usage))
+            Text(stringResource(id = R.string.bt_location_request_usage), color = Black)
         })
 }

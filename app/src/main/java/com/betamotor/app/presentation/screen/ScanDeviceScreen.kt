@@ -188,8 +188,15 @@ fun ScanDeviceScreen(
         }
     }
 
+    LaunchedEffect(state.isConnectionAuthorized) {
+        // currently connecting to device
+        if (state.isConnectionAuthorized) {
+            navController.navigate(Screen.DetailDevice.route)
+        }
+    }
+
     fun connect(device: BluetoothDevice) {
-        viewModel.connectDevice(device, "SPFP4ITS@ar,30/11", callback = { isSuccess, errMessage ->
+        viewModel.connectDevice(device, "", callback = { isSuccess, errMessage ->
             isLoading.value = false
             isConnecting.value = false
 
@@ -231,10 +238,9 @@ fun ScanDeviceScreen(
                 isConnecting = isConnecting.value,
                 selectedDevice = selectedDevice.value,
                 onClick = {
-//                    selectedDevice.value = it
-//                    isConnecting.value = true
-//                    connect(it)
-                    navController.navigate(Screen.DetailDevice.route)
+                    selectedDevice.value = it
+                    isConnecting.value = true
+                    connect(it)
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -274,7 +280,7 @@ fun BluetoothDeviceList(
         Row(
             modifier = Modifier
                 .background(color = Gray)
-                .padding(top = 48.dp, bottom = 24.dp)
+                .padding(top = 24.dp, bottom = 24.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,

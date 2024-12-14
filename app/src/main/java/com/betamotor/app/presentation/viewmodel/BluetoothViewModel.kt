@@ -94,6 +94,20 @@ class BluetoothViewModel @Inject constructor(
         bluetoothController.sendCommand(command)
     }
 
+    fun sendCommandByteDES(command: ByteArray) {
+        viewModelScope.launch {
+            bluetoothController.sendCommandByteDES(command)
+        }
+    }
+
+    fun setOnReadDataDESCalback(
+        onDataReceived: (Byte, ByteArray) -> Unit
+    ) {
+        viewModelScope.launch {
+            bluetoothController.onReadDataDES(onDataReceived)
+        }
+    }
+
     fun disconnectDevice() {
         bluetoothController.disconnectDevice()
     }
