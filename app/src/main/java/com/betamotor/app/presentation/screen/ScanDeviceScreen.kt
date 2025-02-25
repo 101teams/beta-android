@@ -93,9 +93,9 @@ fun ScanDeviceScreen(
     var checkedPermission by remember { mutableStateOf(false) }
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(
         Manifest.permission.BLUETOOTH_CONNECT,
-        Manifest.permission.BLUETOOTH_SCAN
+        Manifest.permission.BLUETOOTH_SCAN,
     ) else listOf(
-        Manifest.permission.BLUETOOTH
+        Manifest.permission.BLUETOOTH,
     )
     val bluetoothPermissionState = rememberMultiplePermissionsState(permissions = permissions)
     var showPermissionDialog by remember { mutableStateOf(false) }
@@ -133,7 +133,6 @@ fun ScanDeviceScreen(
         if (isPermissionGranted()) {
             when (lifecycleEvent) {
                 Lifecycle.Event.ON_RESUME -> {
-                    viewModel.resetDevices()
                     viewModel.startScan()
                 }
                 Lifecycle.Event.ON_STOP -> {
@@ -270,6 +269,7 @@ fun BluetoothDeviceList(
     val viewModel = hiltViewModel<BluetoothViewModel>()
 
     fun startScan() {
+        viewModel.resetDevices()
         viewModel.startScan()
     }
 
