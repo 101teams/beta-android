@@ -10,7 +10,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.betamotor.app.presentation.screen.DetailDeviceScreen
+import com.betamotor.app.presentation.screen.ForgotPasswordScreen
+import com.betamotor.app.presentation.screen.LoginScreen
 import com.betamotor.app.presentation.screen.MainScreen
+import com.betamotor.app.presentation.screen.RegisterScreen
 import com.betamotor.app.presentation.screen.ScanDeviceScreen
 import com.betamotor.app.presentation.screen.SplashScreen
 
@@ -60,6 +63,36 @@ fun Navigation() {
             popEnterTransition = popEnterTransition
         ) {
             SplashScreen(navController)
+        }
+
+        composable(
+            route = Screen.Login.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            LoginScreen(navController)
+        }
+
+        composable(
+            route = Screen.Register.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            RegisterScreen(navController)
+        }
+
+        composable(
+            route = Screen.ForgotPassword.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            ForgotPasswordScreen(navController)
         }
 
         composable(

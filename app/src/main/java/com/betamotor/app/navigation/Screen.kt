@@ -2,6 +2,9 @@ package com.betamotor.app.navigation
 
 sealed class Screen(val route: String) {
     object Splash: Screen("splash")
+    object Login: Screen("login")
+    object Register: Screen("register")
+    object ForgotPassword: Screen("forgot-password")
     object Main: Screen("main")
     object ScanDevice: Screen("scan-device")
     object DetailDevice: Screen("detail-device")

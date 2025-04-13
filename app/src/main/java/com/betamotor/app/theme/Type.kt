@@ -45,13 +45,13 @@ val Typography = Typography(
     body1 = TextStyle(
         fontFamily = RobotoCondensed,
         fontWeight = FontWeight.Normal,
-        fontSize = 24.sp,
+        fontSize = 14.sp,
         color = White
     ),
     body2 = TextStyle(
         fontFamily = RobotoCondensed,
         fontWeight = FontWeight.Normal,
-        fontSize = 18.sp,
+        fontSize = 12.sp,
         color = White
     ),
     caption = TextStyle(

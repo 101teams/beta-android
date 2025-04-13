@@ -6,4 +6,24 @@
     <string name="done">Done</string>
     <string name="bt_location_request">Attention</string>
     <string name="bt_location_request_usage">You need to turn on Bluetooth and Location of this device to access the BLE Device</string>
+    <string name="your_email">Email</string>
+    <string name="your_password">Password</string>
+    <string name="register">Register</string>
+    <string name="name">Name</string>
+    <string name="email">Email</string>
+    <string name="email_must_valid">Email address must be a valid email</string>
+    <string name="password">Password</string>
+    <string name="password_must_8_char">Password at least 8 character</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="password_must_match">Password must match</string>
+    <string name="i_have_read">I have read and accept the</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="submit">Submit</string>
+    <string name="already_have_an_account">Already have an account?</string>
+    <string name="login_here">Login here</string>
+    <string name="handphone_number">Handphone Number</string>
+    <string name="phone_must_valid">Phone number must be a valid phone number</string>
+    <string name="password_recovery">Password Recovery</string>
+    <string name="forgot_password_enter_email">Please enter your email recover to your password</string>
+    <string name="forgot_password">Forgot Password?</string>
 </resources>

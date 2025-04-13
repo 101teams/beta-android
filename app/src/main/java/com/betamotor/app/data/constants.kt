@@ -28,4 +28,6 @@ object constants {
     const val TUNE_OFFSET = 0x0017
     const val TUNE_MAX = 0x0018
     const val TUNE_MIN = 0x0019
+
+    const val PRIVACY_POLICY_URL = "https://google.com"
 }

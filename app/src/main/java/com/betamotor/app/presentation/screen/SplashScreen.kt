@@ -46,7 +46,7 @@ fun SplashScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 Handler(Looper.getMainLooper()).postDelayed({
-                    navController.navigate(Screen.Main.route) {
+                    navController.navigate(Screen.Login.route) {
                         popUpTo(navController.graph.id) {
                             inclusive = true
                         }
