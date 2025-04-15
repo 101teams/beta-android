@@ -13,6 +13,7 @@ import com.betamotor.app.presentation.screen.DetailDeviceScreen
 import com.betamotor.app.presentation.screen.ForgotPasswordScreen
 import com.betamotor.app.presentation.screen.LoginScreen
 import com.betamotor.app.presentation.screen.MainScreen
+import com.betamotor.app.presentation.screen.MotorcycleScreen
 import com.betamotor.app.presentation.screen.RegisterScreen
 import com.betamotor.app.presentation.screen.ScanDeviceScreen
 import com.betamotor.app.presentation.screen.SplashScreen
@@ -93,6 +94,16 @@ fun Navigation() {
             popEnterTransition = popEnterTransition
         ) {
             ForgotPasswordScreen(navController)
+        }
+
+        composable(
+            route = Screen.Motorcycle.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            MotorcycleScreen(navController)
         }
 
         composable(

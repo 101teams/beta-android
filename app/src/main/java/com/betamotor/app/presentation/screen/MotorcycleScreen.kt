@@ -11,18 +11,25 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Card
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
@@ -48,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.betamotor.app.R
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.Input
@@ -61,11 +69,10 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 
 @Composable
-fun LoginScreen(
+fun MotorcycleScreen(
     navController: NavController
 ) {
-    val email = remember { mutableStateOf("") }
-    val password = remember { mutableStateOf("") }
+    val itemsList = (1..50).map { "Item $it" }
 
     Box (
         modifier = Modifier
@@ -82,107 +89,88 @@ fun LoginScreen(
             )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(all = 32.dp),
+            modifier = Modifier.fillMaxSize().padding(all = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp, top = 64.dp),
-            ) {
-                Image(
-                    bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor_vertical),
-                    contentDescription = "Betamotor App Logo",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
-            }
-
-            Input(
-                modifier = Modifier,
-                field = null,
-                placeholder = stringResource(id = R.string.your_email),
-                binding = email,
-                disabled = false,
-                keyboardOptions = KeyboardOptions.Default.copy(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                inputTextStyle = TextStyle(
-                    fontFamily = RobotoCondensed,
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 12.sp,
+            Text(
+                text = stringResource(id = R.string.motorcycle_model),
+                style = TextStyle(
+                    fontSize = 20.sp,
                     color = White,
+                    fontWeight = FontWeight.Medium,
                 ),
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            PasswordInput(
-                modifier = Modifier,
-                placeholder = stringResource(id = R.string.your_password),
-                binding = password,
-                imeAction = ImeAction.Done,
-            )
-
-            TextButton(
-                modifier = Modifier.align(Alignment.End),
-                onClick = {
-                    navController.navigate(Screen.ForgotPassword.route)
-                },
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+                horizontalAlignment = Alignment.Start,
             ) {
                 Text(
-                    text = stringResource(id = R.string.forgot_password),
-                    style = MaterialTheme.typography.body1,
-                )
-            }
-
-            Button(
-                modifier = Modifier.padding(top = 42.dp)
-                    .fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(backgroundColor = Green),
-                onClick = {
-                    navController.navigate(Screen.Motorcycle.route) {
-                        popUpTo(navController.graph.id) {
-                            inclusive = true
-                        }
-                    }
-                },
-            ) {
-                Row (
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp,),
-                ) {
-                    Text(
-                        text = "Sign In",
-                        fontSize = 20.sp,
-                        style = MaterialTheme.typography.button,
-                        color = White,
-                    )
-                }
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Doesn't have account?",
+                    text = stringResource(id = R.string.choose_motorcycle_model),
                     style = TextStyle(
+                        fontSize = 16.sp,
                         color = White,
-                        fontSize = 14.sp,
-                        fontFamily = RobotoCondensed,
+                        fontWeight = FontWeight.Medium,
                     ),
                 )
+            }
 
-                TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2), // 2 columns
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top= 24.dp),
+                contentPadding = PaddingValues(8.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(itemsList) { item ->
+                    GridItem(text = item)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GridItem(text: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = text,
+            style = TextStyle(
+                fontSize = 14.sp,
+                color = White,
+                fontWeight = FontWeight.Medium,
+            ),
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            Column(){
+                Image(
+                    painter = rememberAsyncImagePainter("https://picsum.photos/300/300"),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                )
+
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.background(Green)
+                        .fillMaxWidth(),
+                ) {
                     Text(
-                        "Register Here",
+                        modifier = Modifier.padding(all=8.dp,),
+                        text = stringResource(R.string.choose),
                         style = TextStyle(
-                            color = White,
                             fontSize = 14.sp,
+                            color = White,
                             fontWeight = FontWeight.Medium,
-                            fontFamily = RobotoCondensed,
                         ),
                     )
                 }

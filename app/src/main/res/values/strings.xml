@@ -26,4 +26,7 @@
     <string name="password_recovery">Password Recovery</string>
     <string name="forgot_password_enter_email">Please enter your email recover to your password</string>
     <string name="forgot_password">Forgot Password?</string>
+    <string name="motorcycle_model">Motorcycle Models</string>
+    <string name="choose_motorcycle_model">Choose Motorcycle Models</string>
+    <string name="choose">Choose</string>
 </resources>
