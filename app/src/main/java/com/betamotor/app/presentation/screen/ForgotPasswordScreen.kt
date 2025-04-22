@@ -1,6 +1,7 @@
 package com.betamotor.app.presentation.screen
 
 import android.app.Activity
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,8 +42,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.forgot_password.ForgotPasswordRequest
 import com.betamotor.app.presentation.component.CustomTopBar
 import com.betamotor.app.presentation.component.Input
+import com.betamotor.app.presentation.viewmodel.AuthViewModel
 //import com.betamotor.app.presentation.component.TopToastDialog
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
@@ -51,6 +54,7 @@ import com.betamotor.app.theme.GrayLight
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.PrefManager
 //import com.betamotor.app.utils.PrefManager
 import kotlinx.coroutines.launch
 
@@ -59,7 +63,7 @@ fun ForgotPasswordScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
-//    val viewModel = hiltViewModel<AuthViewModel>()
+    val viewModel = hiltViewModel<AuthViewModel>()
     val scope = rememberCoroutineScope()
 
     val email = remember { mutableStateOf("") }
@@ -137,20 +141,21 @@ fun ForgotPasswordScreen(
                             android.util.Patterns.EMAIL_ADDRESS.matcher(email.value).matches()
                         ) {
                             scope.launch {
-//                                viewModel.loading.value = true
-//                                val response = viewModel.forgotPassword(
-//                                    ForgotPasswordRequest(
-//                                        email = email.value
-//                                    ),
-//                                    PrefManager(context).getCurrentLanguage(),
-//                                )
-//                                if (response == null) {
-//                                    postDataMessage.value = context.getString(R.string.success_reset_password)
-//                                } else {
-//                                    postDataMessage.value = context.getString(R.string.failed_reset_password)
-//                                }
-//                                showToast.value = true
-//                                viewModel.loading.value = false
+                                viewModel.loading.value = true
+                                val response = viewModel.forgotPassword(
+                                    ForgotPasswordRequest(
+                                        email = email.value
+                                    ),
+                                    PrefManager(context).getCurrentLanguage(),
+                                )
+                                if (response == null) {
+                                    postDataMessage.value = context.getString(R.string.success_reset_password)
+                                } else {
+                                    postDataMessage.value = context.getString(R.string.failed_reset_password)
+                                }
+
+                                Toast.makeText(context, postDataMessage.value, Toast.LENGTH_SHORT).show()
+                                viewModel.loading.value = false
                             }
                         }
                     },
@@ -160,18 +165,18 @@ fun ForgotPasswordScreen(
                         ) Green else GrayLight
                     ),
                 ) {
-//                    if (viewModel.loading.value) {
-//                        CircularProgressIndicator(
-//                            color = White,
-//                            strokeCap = StrokeCap.Round,
-//                            strokeWidth = 2.dp,
-//                            modifier = Modifier
-//                                .width(18.dp)
-//                                .height(18.dp)
-//                        )
-//                    } else {
+                    if (viewModel.loading.value) {
+                        CircularProgressIndicator(
+                            color = White,
+                            strokeCap = StrokeCap.Round,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier
+                                .width(18.dp)
+                                .height(18.dp)
+                        )
+                    } else {
                         Text(stringResource(id = R.string.submit), style = MaterialTheme.typography.button, fontSize = 18.sp)
-//                    }
+                    }
                 }
             }
         }

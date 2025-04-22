@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
@@ -30,13 +31,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -47,25 +51,84 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getString
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.auth.AuthRequest
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.Input
 import com.betamotor.app.presentation.component.PasswordInput
 import com.betamotor.app.presentation.component.PermissionNeededDialog
+import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.DarkBlue
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.PrefManager
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
     navController: NavController
 ) {
+    val context = LocalContext.current
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
+
+    val scope = rememberCoroutineScope()
+    val viewModel = hiltViewModel<AuthViewModel>()
+    val focusManager = LocalFocusManager.current
+
+    val prefManager = PrefManager(context)
+
+    fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+        Toast.makeText(context, message, duration).show()
+    }
+
+    fun login() {
+        val request = AuthRequest(
+            email = email.value ?: "",
+            password = password.value ?: ""
+        )
+
+        if (request.email.isBlank()) {
+            showToast(getString(context, R.string.email_cannot_empty))
+            return
+        }
+
+        if (request.password.isBlank()) {
+            showToast(getString(context, R.string.password_cannot_empty))
+            return
+        }
+
+        if (request.password.length < 12) {
+            showToast(getString(context, R.string.password_must_12_char))
+            return
+        }
+
+        focusManager.clearFocus()
+
+        scope.launch {
+            viewModel.loading.value = true
+            val error = viewModel.login(request)
+
+            if (error == null) {
+                viewModel.resetToken()
+
+                navController.navigate(Screen.Motorcycle.route) {
+                    popUpTo(navController.graph.id) {
+                        inclusive = true
+                    }
+                }
+            } else {
+                showToast(error, Toast.LENGTH_LONG)
+            }
+            viewModel.loading.value = false
+        }
+    }
 
     Box (
         modifier = Modifier
@@ -143,23 +206,30 @@ fun LoginScreen(
                     .fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(backgroundColor = Green),
                 onClick = {
-                    navController.navigate(Screen.Motorcycle.route) {
-                        popUpTo(navController.graph.id) {
-                            inclusive = true
-                        }
-                    }
+                    login()
                 },
             ) {
                 Row (
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp,),
                 ) {
-                    Text(
-                        text = "Sign In",
-                        fontSize = 20.sp,
-                        style = MaterialTheme.typography.button,
-                        color = White,
-                    )
+                    if (viewModel.loading.value) {
+                        CircularProgressIndicator(
+                            color = White,
+                            strokeCap = StrokeCap.Round,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier
+                                .width(18.dp)
+                                .height(18.dp)
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.sign_in),
+                            fontSize = 20.sp,
+                            style = MaterialTheme.typography.button,
+                            color = White,
+                        )
+                    }
                 }
             }
 

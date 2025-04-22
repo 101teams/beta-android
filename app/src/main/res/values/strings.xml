@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_25Feb2025</string>
+    <string name="app_name">Betamotor_22Apr2025</string>
     <string name="connection_timeout">Connection Timeout</string>
     <string name="nearby_bike">Nearby Bike</string>
     <string name="no_name">No Name</string>
@@ -13,7 +13,9 @@
     <string name="email">Email</string>
     <string name="email_must_valid">Email address must be a valid email</string>
     <string name="password">Password</string>
-    <string name="password_must_8_char">Password at least 8 character</string>
+    <string name="password_must_12_char">Password at least 12 character</string>
+    <string name="password_must_contain_special_char_and_number">Password must contain special char, capital letter and number</string>
+    <string name="registration_success">User created successfully. Please check your email to verify your account.</string>
     <string name="confirm_password">Confirm Password</string>
     <string name="password_must_match">Password must match</string>
     <string name="i_have_read">I have read and accept the</string>
@@ -29,4 +31,9 @@
     <string name="motorcycle_model">Motorcycle Models</string>
     <string name="choose_motorcycle_model">Choose Motorcycle Models</string>
     <string name="choose">Choose</string>
+    <string name="email_cannot_empty">Email cannot be empty!</string>
+    <string name="password_cannot_empty">Password cannot be empty!</string>
+    <string name="sign_in">Sign In</string>
+    <string name="success_reset_password">If a user with that email exists, a password reset link has been sent</string>
+    <string name="failed_reset_password">Password not resetting</string>
 </resources>

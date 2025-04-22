@@ -46,11 +46,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.register.RegisterRequest
 import com.betamotor.app.data.constants.PRIVACY_POLICY_URL
 import com.betamotor.app.presentation.component.CustomCheckbox
 import com.betamotor.app.presentation.component.CustomTopBar
 import com.betamotor.app.presentation.component.Input
 import com.betamotor.app.presentation.component.PasswordInput
+import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayLight
@@ -65,7 +67,7 @@ fun RegisterScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
-//    val viewModel = hiltViewModel<AuthViewModel>()
+    val viewModel = hiltViewModel<AuthViewModel>()
     val scope = rememberCoroutineScope()
 
 //    val window = (context as Activity).window
@@ -179,10 +181,21 @@ fun RegisterScreen(
             )
 
             if (password.value.isNotEmpty() &&
-                password.value.length < 8) {
+                password.value.length < 12) {
                 Text(
                     modifier = Modifier,
-                    text = stringResource(id = R.string.password_must_8_char),
+                    text = stringResource(id = R.string.password_must_12_char),
+                    style = TextStyle(
+                        fontFamily = RobotoCondensed,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = White,
+                    ),
+                )
+            }else if (password.value.isNotEmpty() && (!password.value.any { !it.isLetterOrDigit() } || !password.value.any { it.isDigit() } || !password.value.any { it.isUpperCase() })) {
+                Text(
+                    modifier = Modifier,
+                    text = stringResource(id = R.string.password_must_contain_special_char_and_number),
                     style = TextStyle(
                         fontFamily = RobotoCondensed,
                         fontSize = 14.sp,
@@ -265,26 +278,31 @@ fun RegisterScreen(
                         phone.value.isNotEmpty() &&
                         email.value.isNotEmpty() &&
                         checked.value &&
-                        password.value.length >= 8 &&
+                        password.value.length >= 12 &&
                         password.value == cpassword.value &&
-                        android.util.Patterns.EMAIL_ADDRESS.matcher(email.value).matches()
+                        android.util.Patterns.EMAIL_ADDRESS.matcher(email.value).matches() &&
+                        password.value.any { !it.isLetterOrDigit() } &&
+                        password.value.any { it.isDigit() } &&
+                        password.value.any { it.isUpperCase() }
                     ) {
                         scope.launch {
-//                            viewModel.loading.value = true
-//                            val successRegist = viewModel.register(RegisterRequest(
-//                                first_name = name.value,
-//                                last_name = surname.value,
-//                                email = email.value,
-//                                password = password.value,
-//                                password_confirmation = cpassword.value,
-//                            ))
-//
-//                            if (successRegist == null) {
-//                                showDialogSuccessRegister.value = true
-//                            } else {
-//                                Toast.makeText(context, successRegist, Toast.LENGTH_LONG).show()
-//                            }
-//                            viewModel.loading.value = false
+                            viewModel.loading.value = true
+                            val successRegist = viewModel.register(
+                                RegisterRequest(
+                                    fullName = name.value,
+                                    phoneNumber = phone.value,
+                                    email = email.value,
+                                    password = password.value,
+                                )
+                            )
+
+                            if (successRegist == null) {
+                                navController.navigateUp()
+                                Toast.makeText(context, context.getString(R.string.success_reset_password), Toast.LENGTH_LONG).show()
+                            } else {
+                                Toast.makeText(context, successRegist, Toast.LENGTH_LONG).show()
+                            }
+                            viewModel.loading.value = false
                         }
                     }
                 },
@@ -294,24 +312,27 @@ fun RegisterScreen(
                         phone.value.isNotEmpty() &&
                         email.value.isNotEmpty() &&
                         checked.value &&
-                        password.value.length >= 8 &&
+                        password.value.length >= 12 &&
                         password.value == cpassword.value &&
-                        android.util.Patterns.EMAIL_ADDRESS.matcher(email.value).matches()
+                        android.util.Patterns.EMAIL_ADDRESS.matcher(email.value).matches() &&
+                        password.value.any { !it.isLetterOrDigit() } &&
+                        password.value.any { it.isDigit() } &&
+                        password.value.any { it.isUpperCase() }
                     ) Green else GrayLight
                 ),
             ) {
-//                if (viewModel.loading.value) {
-//                    CircularProgressIndicator(
-//                        color = White,
-//                        strokeCap = StrokeCap.Round,
-//                        strokeWidth = 2.dp,
-//                        modifier = Modifier
-//                            .width(18.dp)
-//                            .height(18.dp)
-//                    )
-//                } else {
+                if (viewModel.loading.value) {
+                    CircularProgressIndicator(
+                        color = White,
+                        strokeCap = StrokeCap.Round,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier
+                            .width(18.dp)
+                            .height(18.dp)
+                    )
+                } else {
                     Text(stringResource(id = R.string.submit), style = MaterialTheme.typography.button, fontSize = 18.sp)
-//                }
+                }
             }
 
             Row(
@@ -342,17 +363,6 @@ fun RegisterScreen(
                     )
                 }
             }
-        }
-
-        if (showDialogSuccessRegister.value) {
-//            DialogSuccessRegister(
-//                onDismiss = {
-//                    showDialogSuccessRegister.value = false
-//                },
-//                onClickContinue = {
-//                    navController.navigateUp()
-//                }
-//            )
         }
     }
 }

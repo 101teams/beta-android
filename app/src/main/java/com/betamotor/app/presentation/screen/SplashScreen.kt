@@ -22,12 +22,14 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.betamotor.app.R
 import com.betamotor.app.navigation.Screen
+import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 
@@ -36,6 +38,8 @@ fun SplashScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+
+    val viewModel = hiltViewModel<AuthViewModel>()
 
     fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
         Toast.makeText(context, message, duration).show()
@@ -46,7 +50,7 @@ fun SplashScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 Handler(Looper.getMainLooper()).postDelayed({
-                    navController.navigate(Screen.Login.route) {
+                    navController.navigate(if (viewModel.isLoggedIn()) Screen.Motorcycle.route else Screen.Login.route) {
                         popUpTo(navController.graph.id) {
                             inclusive = true
                         }

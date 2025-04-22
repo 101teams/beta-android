@@ -1,5 +1,6 @@
 package com.betamotor.app.presentation.screen
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -79,6 +80,8 @@ import com.betamotor.app.theme.GrayLight
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.MQTTHelper
+import com.betamotor.app.utils.PrefManager
 import com.google.accompanist.pager.ExperimentalPagerApi
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -94,6 +97,7 @@ fun DetailDeviceScreen(
     val state by viewModel.state.collectAsState()
 
     val context = LocalContext.current
+    val prefManager = PrefManager(context)
 
     fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
         Toast.makeText(context, message, duration).show()
@@ -125,10 +129,10 @@ fun DetailDeviceScreen(
         }
     }
 
-    val tabs = listOf("Data", "Info", "Tune", "Diag")
+    val tabs = listOf("Info", "Data", "Tune", "Diag")
     val icons = listOf(
-        painterResource(id = R.drawable.ic_tab1),
         painterResource(id = R.drawable.ic_tab2),
+        painterResource(id = R.drawable.ic_tab1),
         painterResource(id = R.drawable.ic_tab3),
         painterResource(id = R.drawable.ic_tab4),
     )
@@ -228,10 +232,10 @@ fun DetailDeviceScreen(
                     modifier = Modifier.padding(paddingValues),
                 ) {
                     when (tab.value) {
-                        0 -> page1(navController, isStreaming, showDialogExport, csvData)
-                        1 -> page2()
-                        2 -> page3()
-                        3 -> page4()
+                        0 -> page2(prefManager, context)
+                        1 -> page1(navController, isStreaming, showDialogExport, csvData, prefManager, context)
+                        2 -> page3(prefManager, context)
+                        3 -> page4(prefManager, context)
                     }
                 }
             }
@@ -247,7 +251,7 @@ fun DetailDeviceScreen(
 }
 
 @Composable
-fun page1(navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>) {
+fun page1(navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>, prefManager: PrefManager, context: Context) {
     val isRecording = remember { mutableStateOf(false) }
     val rpm = remember { mutableStateOf("-") }
     val gasPosition = remember { mutableStateOf("-") }
@@ -489,6 +493,22 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                                                 batteryVoltage.value = (resData/16).toString()
                                                 saveCsvData("BATTERY VOLTAGE", (resData/16).toString())
 
+                                                val jsonPayload = """
+                                                    {
+                                                      "vin": "${prefManager.getMotorcycleVIN()}",
+                                                      "rpm": ${rpm.value},
+                                                      "throttle": ${gasPosition.value},
+                                                      "sparkAdv": ${actuatedSpark.value},
+                                                      "engineTemp": ${engineCoolant.value},
+                                                      "airTemp": ${airTemp.value},
+                                                      "atmPressure": ${atmospherePressure.value},
+                                                      "opTime": ${operatingHours.value},
+                                                      "batteryVoltage": ${batteryVoltage.value}
+                                                    }
+                                                """.trimIndent()
+
+                                                MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleCode()}/enginedata", jsonPayload)
+
                                                 streamData()
                                             }
                                         }
@@ -610,7 +630,8 @@ fun getTuneData(btViewModel: BluetoothViewModel, rliId: Int, isRead: Boolean, wr
 }
 
 @Composable
-fun page2() {
+fun page2(prefManager: PrefManager, context: Context) {
+
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val vin = remember { mutableStateOf("-") }
     val ecuDRW = remember { mutableStateOf("-") }
@@ -624,8 +645,8 @@ fun page2() {
             if (fullData[1].toInt() == 0x0301 and 0xFF) {
                 when (rliID) {
                     constants.ECU_VIN.toByte() -> {
-                        Log.d("aiaiaiai", convertVINData(fullData))
                         vin.value = convertVINData(fullData)
+                        prefManager.setMotorcycleVIN(vin.value)
 
                         getVINData(btViewModel, constants.ECU_DRAWING_NUMBER)
                     }
@@ -651,6 +672,17 @@ fun page2() {
                     }
                     constants.ECU_HOMOLOGATION.toByte() -> {
                         homologation.value = convertVINData(fullData)
+                        val jsonPayload = """
+                            {
+                              "vin": "${vin.value}",
+                              "ecuDrw": "${ecuDRW.value}",
+                              "ecuHw": "${ecuHW.value}",
+                              "ecuSw": "${ecuSW.value}",
+                              "calibration": "${calibration.value}",
+                              "homolCode": "${homologation.value}"
+                            }
+                        """.trimIndent()
+                        MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleCode()}/engineinfo", jsonPayload)
                     }
                 }
             }
@@ -690,7 +722,7 @@ fun page2() {
 }
 
 @Composable
-fun page3() {
+fun page3(prefManager: PrefManager, context: Context) {
 
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val adjustmentValue = remember { mutableStateOf(0) }
@@ -711,6 +743,16 @@ fun page3() {
                         val resData = convertSignedTwosComplement(((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF, 16)
                         tuneOffset.value = 1900 + resData
                         adjustmentValue.value = resData
+
+                        val jsonPayload = """
+                            {
+                              "vin": "${prefManager.getMotorcycleVIN()}",
+                              "idleTarget": ${tuneOffset.value},
+                              "adjustment": ${adjustmentValue.value}
+                            }
+                        """.trimIndent()
+
+                        MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleCode()}/idleadjustment", jsonPayload)
 
                         getTuneData(btViewModel, constants.TUNE_MIN, true, null)
                     }
@@ -881,7 +923,7 @@ fun get4BitsAsHex(byte: Byte, isHigh: Boolean): String {
 }
 
 @Composable
-fun page4() {
+fun page4(prefManager: PrefManager, context: Context) {
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val imgEngineOn = remember { mutableStateOf(false) }
 
@@ -904,6 +946,9 @@ fun page4() {
                 val dataLoop = dataLen.toInt() / 10
 
                 val tempData = mutableListOf<Pair<String,String>>()
+
+                var mqttCodesPayload = ""
+
                 for (x in 1..dataLoop) {
                     var title = ""
                     var value = ""
@@ -957,6 +1002,17 @@ fun page4() {
                         }
                     }
 
+                    if (mqttCodesPayload != "") {
+                        mqttCodesPayload += ","
+                    }
+
+                    mqttCodesPayload += """
+                            {
+                              "code": "$title",
+                              "binaryValue": "$value"
+                            }
+                        """.trimIndent()
+
                     tempData.add(Pair(title, value))
 
                     //set lamp
@@ -966,6 +1022,16 @@ fun page4() {
 
                     firstIndex += 10
                 }
+
+                val jsonPayload = """
+                            {
+                              "vin": "${prefManager.getMotorcycleVIN()}",
+                              "codes": [${mqttCodesPayload}],
+                              "checkEngineLight": ${imgEngineOn.value}
+                            }
+                        """.trimIndent()
+
+                MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleCode()}/enginediagnose", jsonPayload)
 
                 tvTitleData.value = tempData
             }
