@@ -290,9 +290,10 @@ fun RegisterScreen(
                             val successRegist = viewModel.register(
                                 RegisterRequest(
                                     fullName = name.value,
-                                    phoneNumber = phone.value,
+                                    phone = phone.value,
                                     email = email.value,
                                     password = password.value,
+                                    passwordConfirmation = cpassword.value,
                                 )
                             )
 
