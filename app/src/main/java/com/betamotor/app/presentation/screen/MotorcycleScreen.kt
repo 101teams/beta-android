@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Text
@@ -57,8 +59,10 @@ import com.betamotor.app.R
 import com.betamotor.app.data.api.motorcycle.MotorcyclesItem
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.PermissionNeededDialog
+import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.presentation.viewmodel.MotorcycleViewModel
 import com.betamotor.app.theme.Black
+import com.betamotor.app.theme.DefaultRed
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
@@ -71,6 +75,7 @@ fun MotorcycleScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val motorcycleViewModel = hiltViewModel<MotorcycleViewModel>()
+    val authViewModel = hiltViewModel<AuthViewModel>()
     var showPermissionDialog = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -107,7 +112,9 @@ fun MotorcycleScreen(
             )
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(all = 24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(all = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -120,7 +127,9 @@ fun MotorcycleScreen(
             )
 
             Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 32.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 32.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
                 Text(
@@ -154,8 +163,8 @@ fun MotorcycleScreen(
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2), // 2 columns
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top= 24.dp),
+                        .fillMaxWidth()
+                        .padding(top = 24.dp),
                     contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -163,6 +172,27 @@ fun MotorcycleScreen(
                     items(motorcycleViewModel.motorcycles.value) { item ->
                         GridItem(motorcycle = item, navController = navController, showPermissionDialog, context)
                     }
+                }
+
+                Spacer(modifier = Modifier.weight(1.0f))
+
+                Button(onClick = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                    }
+                                 }, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = DefaultRed),) {
+                    Text(
+                        text = stringResource(R.string.logout),
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            color = White,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        modifier = Modifier.padding(8.dp)
+                    )
                 }
             }
         }
@@ -240,23 +270,26 @@ fun GridItem(motorcycle: MotorcyclesItem?, navController: NavController, showPer
             modifier = Modifier
                 .fillMaxWidth()
         ) {
-            Column(){
+            Column() {
                 Image(
                     painter = rememberAsyncImagePainter(motorcycle?.imageUrl ?: ""),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
                 )
 
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.background(Green)
+                    modifier = Modifier
+                        .background(Green)
                         .fillMaxWidth()
                         .clickable {
                             findDevices(motorcycle?.code ?: "")
                         },
                 ) {
                     Text(
-                        modifier = Modifier.padding(all=8.dp,),
+                        modifier = Modifier.padding(all = 8.dp,),
                         text = stringResource(R.string.choose),
                         style = TextStyle(
                             fontSize = 14.sp,

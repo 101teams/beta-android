@@ -7,6 +7,7 @@ import com.betamotor.app.data.api.auth.AuthResponse
 import com.betamotor.app.data.api.auth.AuthRequest
 import com.betamotor.app.data.api.auth.User
 import com.betamotor.app.data.api.forgot_password.ForgotPasswordRequest
+import com.betamotor.app.data.api.motorcycle.MotorcycleListResponse
 import com.betamotor.app.data.api.register.RegisterData
 import com.betamotor.app.data.api.register.RegisterRequest
 import com.betamotor.app.data.api.register.RegisterResponse
@@ -19,6 +20,7 @@ import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.plugins.auth.Auth
 import io.ktor.client.plugins.auth.providers.BearerAuthProvider
 import io.ktor.client.plugins.plugin
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.url
@@ -117,6 +119,29 @@ class AuthServiceImpl(
             }
         } catch (e: Exception) {
             Pair(null, "Error: ${e.message}")
+        }
+    }
+
+    override suspend fun logout(): Pair<Boolean, String> {
+        return try {
+            client.get {
+                url(HttpRoutes.LOGOUT)
+            }
+            Pair(true, "")
+        } catch (e: RedirectResponseException) {
+            Pair(false, "Error 3xx: ${e.response.status.description}")
+        } catch (e: ClientRequestException) {
+            val response = e.response.body<ErrorResponse>()
+            Pair(false, response.errors?.get(0)?.message!!)
+        } catch (e: ServerResponseException) {
+            try{
+                val response = e.response.body<ErrorResponse>()
+                Pair(false, response.errors?.get(0)?.message!!)
+            } catch (er: Exception) {
+                Pair(false, "Error 5xx: ${e.response.status.description}")
+            }
+        } catch (e: Exception) {
+            Pair(false, "Error: ${e.message}")
         }
     }
 }

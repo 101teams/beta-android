@@ -12,4 +12,5 @@ interface AuthService {
     suspend fun login(request: AuthRequest): Pair<User?, String>
     suspend fun register(request: RegisterRequest): Pair<RegisterData?, String>
     suspend fun forgotPassword(request: ForgotPasswordRequest, language: String): Pair<ForgotPasswordResponse?, String>
+    suspend fun logout(): Pair<Boolean, String>
 }

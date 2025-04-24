@@ -299,7 +299,7 @@ fun RegisterScreen(
 
                             if (successRegist == null) {
                                 navController.navigateUp()
-                                Toast.makeText(context, context.getString(R.string.success_reset_password), Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Account registration success, please check your email to verify account", Toast.LENGTH_LONG).show()
                             } else {
                                 Toast.makeText(context, successRegist, Toast.LENGTH_LONG).show()
                             }

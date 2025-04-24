@@ -8,21 +8,25 @@ import android.location.LocationManager
 import android.os.Build
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -38,8 +42,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -54,6 +60,7 @@ import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.CheckPermission
+import com.betamotor.app.presentation.component.CustomTopBar
 import com.betamotor.app.presentation.component.NetworkItem
 import com.betamotor.app.presentation.component.PermissionNeededDialog
 import com.betamotor.app.presentation.component.observeLifecycle
@@ -231,6 +238,7 @@ fun ScanDeviceScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             BluetoothDeviceList(
+                navController = navController,
                 pairedDevices = state.pairedDevices,
                 scannedDevices = state.scannedDevices,
                 isScanning = state.isScanning,
@@ -243,7 +251,7 @@ fun ScanDeviceScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .weight(1f),
             )
 
             if (showPermissionDialog) {
@@ -258,6 +266,7 @@ fun ScanDeviceScreen(
 
 @Composable
 fun BluetoothDeviceList(
+    navController: NavController,
     pairedDevices: List<BluetoothDevice>,
     scannedDevices: List<BluetoothDevice>,
     isScanning: Boolean,
@@ -280,17 +289,35 @@ fun BluetoothDeviceList(
         Row(
             modifier = Modifier
                 .background(color = Gray)
-                .padding(top = 24.dp, bottom = 24.dp)
+                .padding(24.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
+            IconButton(
+                onClick = {
+                    navController.navigateUp()
+                },
+                modifier = Modifier
+                    .width(36.dp)
+                    .height(36.dp)
+            ) {
+                Image(
+                    modifier = Modifier
+                        .size(24.dp),
+                    bitmap = ImageBitmap.imageResource(R.drawable.ic_arrow_back_white),
+                    contentDescription = "back button"
+                )
+            }
+
             Text(
                 text = "Find Nearby Bikes",
                 modifier = Modifier,
                 style = MaterialTheme.typography.h4,
                 fontSize = 20.sp,
             )
+
+            Spacer(modifier = Modifier.width(24.dp))
         }
 
         LazyColumn(

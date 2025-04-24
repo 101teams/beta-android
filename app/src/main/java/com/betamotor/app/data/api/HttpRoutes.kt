@@ -8,4 +8,5 @@ object HttpRoutes {
     const val MOTORCYCLE = "${Constants.API_URL}${v1}/motorcycles"
     const val REGISTER = "${Constants.API_URL}${v1}/register"
     const val FORGOT_PASSWORD = "${Constants.API_URL}${v1}/forgot-password"
+    const val LOGOUT = "${Constants.API_URL}${v1}/logout"
 }

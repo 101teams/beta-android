@@ -36,4 +36,5 @@
     <string name="sign_in">Sign In</string>
     <string name="success_reset_password">If a user with that email exists, a password reset link has been sent</string>
     <string name="failed_reset_password">Password not resetting</string>
+    <string name="logout">Logout</string>
 </resources>

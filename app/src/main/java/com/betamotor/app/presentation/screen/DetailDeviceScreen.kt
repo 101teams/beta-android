@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -69,11 +70,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.betamotor.app.R
 import com.betamotor.app.data.constants
+import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
 import com.betamotor.app.presentation.component.observeLifecycle
+import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.theme.Black
+import com.betamotor.app.theme.DefaultRed
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.GrayLight
@@ -235,7 +239,7 @@ fun DetailDeviceScreen(
                         0 -> page2(prefManager, context)
                         1 -> page1(navController, isStreaming, showDialogExport, csvData, prefManager, context)
                         2 -> page3(prefManager, context)
-                        3 -> page4(prefManager, context)
+                        3 -> page4(prefManager, context, navController)
                     }
                 }
             }
@@ -923,7 +927,8 @@ fun get4BitsAsHex(byte: Byte, isHigh: Boolean): String {
 }
 
 @Composable
-fun page4(prefManager: PrefManager, context: Context) {
+fun page4(prefManager: PrefManager, context: Context, navController: NavController) {
+    val authViewModel = hiltViewModel<AuthViewModel>()
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val imgEngineOn = remember { mutableStateOf(false) }
 
@@ -1078,6 +1083,26 @@ fun page4(prefManager: PrefManager, context: Context) {
                     }
                 }
 //                DetailDataItem(title = tvTitle.value, value = tvData.value, suffix = "")
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = {
+                    authViewModel.logout()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                    }
+                }, modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = DefaultRed),) {
+                    Text(
+                        text = stringResource(R.string.logout),
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            color = White,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
             }
         }
     }
