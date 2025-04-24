@@ -1,5 +1,6 @@
 package com.betamotor.app.service
 
+import android.util.Log
 import com.betamotor.app.data.api.ErrorResponse
 import com.betamotor.app.data.api.ErrorResponse2
 import com.betamotor.app.data.api.HttpRoutes
@@ -46,8 +47,14 @@ class AuthServiceImpl(
         } catch (e: RedirectResponseException) {
             Pair(null, "Error 3xx: ${e.response.status.description}")
         } catch (e: ClientRequestException) {
-            val response = e.response.body<ErrorResponse>()
-            Pair(null, response.errors?.get(0)?.message!!)
+            val responseAsErrorResponse = e.response.body<ErrorResponse>()
+            if (responseAsErrorResponse.errors.isNullOrEmpty()) {
+                val response = e.response.body<ErrorResponse2>()
+                return Pair(null, response.message.toString())
+            } else {
+                return Pair(null, responseAsErrorResponse.errors[0]?.message!!)
+            }
+
         } catch (e: ServerResponseException) {
             try{
                 val response = e.response.body<ErrorResponse>()

@@ -27,12 +27,12 @@ class PrefManager(
         return getData("access_token", "")
     }
 
-    fun setMotorcycleCode(code: String) {
-        saveData("motorcycle_code", code)
+    fun setMotorcycleTypeId(id: Int) {
+        saveData("motorcycle_code", id.toString())
     }
 
-    fun getMotorcycleCode(): String {
-        return getData("motorcycle_code", "")
+    fun getMotorcycleTypeId(): Int? {
+        return getData("motorcycle_code", "").toIntOrNull()
     }
 
     fun setMotorcycleVIN(vin: String) {

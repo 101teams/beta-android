@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
+import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
@@ -63,16 +66,20 @@ import com.betamotor.app.presentation.component.CheckPermission
 import com.betamotor.app.presentation.component.CustomTopBar
 import com.betamotor.app.presentation.component.NetworkItem
 import com.betamotor.app.presentation.component.PermissionNeededDialog
+import com.betamotor.app.presentation.component.SaveMotorcycleDialog
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
+import com.betamotor.app.presentation.viewmodel.MotorcycleViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.PrefManager
 import com.betamotor.app.utils.SystemBroadcastReceiver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -81,12 +88,20 @@ fun ScanDeviceScreen(
 ) {
     val context = LocalContext.current
     val viewModel = hiltViewModel<BluetoothViewModel>()
+    val motorcycleViewModel = hiltViewModel<MotorcycleViewModel>()
     val state by viewModel.state.collectAsState()
+    val motorcycleError = motorcycleViewModel.error.collectAsState()
+    val prefManager = PrefManager(context)
+    val scope = rememberCoroutineScope()
 
     val isLoading = remember { mutableStateOf(false) }
     val isConnecting = remember { mutableStateOf(false) }
     val selectedDevice: MutableState<BluetoothDevice?> = remember {
         mutableStateOf(null)
+    }
+
+    val showSaveMotorcycleDialog = remember {
+        mutableStateOf(false)
     }
 
     val bluetoothManager by lazy { context.getSystemService(BluetoothManager::class.java) }
@@ -116,6 +131,8 @@ fun ScanDeviceScreen(
     }
 
     LaunchedEffect(Unit) {
+        motorcycleViewModel.getMotorcycles()
+
         if (isPermissionGranted()) {
             viewModel.startScan()
         }
@@ -196,8 +213,16 @@ fun ScanDeviceScreen(
 
     LaunchedEffect(state.isConnectionAuthorized) {
         // currently connecting to device
-        if (state.isConnectionAuthorized) {
-            navController.navigate(Screen.DetailDevice.route)
+        if (!state.isConnectionAuthorized) {
+            return@LaunchedEffect
+        }
+        showSaveMotorcycleDialog.value = true
+    }
+
+    LaunchedEffect(motorcycleError.value) {
+        if (motorcycleError.value != null) {
+            Toast.makeText(context, motorcycleError.value, Toast.LENGTH_LONG).show()
+            motorcycleViewModel.clearError()
         }
     }
 
@@ -258,6 +283,55 @@ fun ScanDeviceScreen(
                 PermissionNeededDialog {
                     showPermissionDialog = false
                     navController.popBackStack()
+                }
+            }
+        }
+
+        if (showSaveMotorcycleDialog.value) {
+            SaveMotorcycleDialog(openDialog = showSaveMotorcycleDialog) { form ->
+                val motorcycleTypeId = prefManager.getMotorcycleTypeId()
+
+                if (motorcycleTypeId == null) {
+                    Toast.makeText(context, "Please select motorcycle type", Toast.LENGTH_SHORT).show()
+
+                    navController.navigate(Screen.MotorcycleTypes.route) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                    }
+
+                    return@SaveMotorcycleDialog
+                }
+
+                scope.launch {
+                    // check if device already saved
+                    val savedMotorcycles = motorcycleViewModel.motorcycles.value
+                    val deviceIdAlreadyUsed = savedMotorcycles.any { it.deviceId == form.deviceId }
+                    val macAddressAlreadyUsed = savedMotorcycles.any { it.macAddress == selectedDevice.value?.macAddress }
+
+                    if (deviceIdAlreadyUsed || macAddressAlreadyUsed) {
+                        Toast.makeText(context, "Device already saved", Toast.LENGTH_SHORT).show()
+                        navController.navigate(Screen.DetailDevice.route)
+                        return@launch
+                    }
+
+                    val success = motorcycleViewModel.saveMotorcycle(
+                        CreateMotorcycleRequest(
+                            name = form.name,
+                            deviceId = form.deviceId,
+                            password = form.password,
+                            macAddress = selectedDevice.value?.macAddress ?: "",
+                            motorcycleTypeId = motorcycleTypeId,
+                            bleGattCharRx = "-",
+                            bleGattCharWx = "-"
+                        )
+                    )
+
+                    if (success) {
+                        navController.navigate(Screen.DetailDevice.route)
+                    }
+
+                    showSaveMotorcycleDialog.value = false
                 }
             }
         }

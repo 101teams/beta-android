@@ -118,7 +118,7 @@ fun LoginScreen(
             if (error == null) {
                 viewModel.resetToken()
 
-                navController.navigate(Screen.Motorcycle.route) {
+                navController.navigate(Screen.MyMotorcycle.route) {
                     popUpTo(navController.graph.id) {
                         inclusive = true
                     }

@@ -50,7 +50,7 @@ fun SplashScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 Handler(Looper.getMainLooper()).postDelayed({
-                    navController.navigate(if (viewModel.isLoggedIn()) Screen.Motorcycle.route else Screen.Login.route) {
+                    navController.navigate(if (viewModel.isLoggedIn()) Screen.MyMotorcycle.route else Screen.Login.route) {
                         popUpTo(navController.graph.id) {
                             inclusive = true
                         }
