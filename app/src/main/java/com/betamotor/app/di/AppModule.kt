@@ -10,6 +10,7 @@ import com.betamotor.app.service.AuthServiceImpl
 import com.betamotor.app.service.BluetoothController
 import com.betamotor.app.service.MotorcycleService
 import com.betamotor.app.service.MotorcycleServiceImpl
+import com.betamotor.app.utils.LocalLogging
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
 import dagger.Module
@@ -36,7 +37,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
     @Provides
     @Singleton
     fun provideTokenStorage(@ApplicationContext context: Context): PrefManager {
@@ -51,8 +51,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBluetoothController(@ApplicationContext context: Context): BluetoothController {
-        return AndroidBluetoothController(context)
+    fun provideBluetoothController(@ApplicationContext context: Context, mqttHelper: MQTTHelper): BluetoothController {
+        return AndroidBluetoothController(context, mqttHelper)
     }
 
     @Provides

@@ -1,6 +1,7 @@
 package com.betamotor.app.utils
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -11,9 +12,10 @@ import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-class LocalLogging {
+class LocalLogging(val context: Context) {
     private val fileName = "app_log.txt"
-    fun writeLog(context: Context, log: String) {
+    fun writeLog(log: String) {
+        Log.d("helow", "localLogging write: $log")
         try {
             val file = File(context.filesDir, fileName)
 
@@ -31,13 +33,13 @@ class LocalLogging {
                 fos.write(logJson.toByteArray())
                 fos.write("\n".toByteArray())
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
         }
     }
 
-    fun readLog(context: Context): List<Pair<String?, String?>> {
+    fun readLog(): List<Pair<String?, String?>> {
         val logs = mutableListOf<Pair<String?, String?>>()
         val file = File(context.filesDir, fileName)
 
@@ -61,13 +63,13 @@ class LocalLogging {
             }
 
             logs
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
             logs
         }
     }
-    fun clearLog(context: Context) {
+    fun clearLog() {
         try {
             val file = File(context.filesDir, fileName)
             FileOutputStream(file).use { fos ->

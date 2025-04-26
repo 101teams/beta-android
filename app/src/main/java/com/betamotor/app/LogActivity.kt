@@ -1,7 +1,6 @@
 package com.betamotor.app
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -29,7 +28,6 @@ import androidx.compose.ui.unit.sp
 import com.betamotor.app.utils.LocalLogging
 
 class LogActivity : ComponentActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -40,8 +38,8 @@ class LogActivity : ComponentActivity() {
 
 @Composable
 fun LogScreen() {
-    val context = LocalContext.current
-    val logContent = LocalLogging().readLog(context)
+    val logger = LocalLogging(LocalContext.current)
+    val logContent = logger.readLog()
 
     val logData = remember { mutableStateOf(logContent) }
 
@@ -89,7 +87,7 @@ fun LogScreen() {
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             onClick = {
-                LocalLogging().clearLog(context)
+                logger.clearLog()
                 logData.value = mutableListOf()
             }
         ) {

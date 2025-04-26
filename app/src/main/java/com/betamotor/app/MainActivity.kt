@@ -11,7 +11,9 @@ import androidx.core.content.ContextCompat
 import com.betamotor.app.navigation.Navigation
 import com.betamotor.app.service.LogNotificationService
 import com.betamotor.app.theme.AppTheme
+import com.betamotor.app.utils.LocalLogging
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
