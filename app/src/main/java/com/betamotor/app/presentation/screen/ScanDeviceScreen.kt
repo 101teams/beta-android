@@ -227,20 +227,20 @@ fun ScanDeviceScreen(
     }
 
     fun connect(device: BluetoothDevice) {
-        viewModel.connectDevice(device, "", callback = { isSuccess, errMessage ->
-            isLoading.value = false
-            isConnecting.value = false
+       viewModel.connectDevice(device, "", callback = { isSuccess, errMessage ->
+           isLoading.value = false
+           isConnecting.value = false
 
-            if (isSuccess) {
-                return@connectDevice
-            }
+           if (isSuccess) {
+               return@connectDevice
+           }
 
-            context.findActivity()?.runOnUiThread {
-                Toast.makeText(context, errMessage, Toast.LENGTH_LONG).show()
-            }
-        }, onDataReceived = {
+           context.findActivity()?.runOnUiThread {
+               Toast.makeText(context, errMessage, Toast.LENGTH_LONG).show()
+           }
+       }, onDataReceived = {
 
-        })
+       })
     }
 
     println("devices: ${state.scannedDevices.map { it.identity }}")
@@ -311,6 +311,7 @@ fun ScanDeviceScreen(
 
                     if (deviceIdAlreadyUsed || macAddressAlreadyUsed) {
                         Toast.makeText(context, "Device already saved", Toast.LENGTH_SHORT).show()
+                        prefManager.setSelectedMotorcycleId(form.deviceId)
                         navController.navigate(Screen.DetailDevice.route)
                         return@launch
                     }
@@ -328,6 +329,7 @@ fun ScanDeviceScreen(
                     )
 
                     if (success) {
+                        prefManager.setSelectedMotorcycleId(form.deviceId)
                         navController.navigate(Screen.DetailDevice.route)
                     }
 

@@ -1,5 +1,8 @@
 package com.betamotor.app.presentation.screen
 
+import android.Manifest
+import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +26,10 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,6 +37,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -38,26 +46,69 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.bluetooth.BluetoothDevice
+import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
+import com.betamotor.app.presentation.component.CheckPermission
 import com.betamotor.app.presentation.viewmodel.AuthViewModel
+import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.MotorcycleViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.DefaultRed
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.LocalLogging
+import com.betamotor.app.utils.PrefManager
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun MyMotorcycleScreen(
     navController: NavController
 ) {
     val authViewModel = hiltViewModel<AuthViewModel>()
     val viewModel = hiltViewModel<MotorcycleViewModel>()
+    val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
     val isLoading = viewModel.isLoading.collectAsState()
     val myMotorcycles = viewModel.motorcycles.collectAsState()
+    val context = LocalContext.current
+    val prefManager = PrefManager(context)
+    val isConnecting = remember { mutableStateOf(false) }
+    val selectedMacAddress = remember { mutableStateOf<String?>(null) }
+
+    var checkedPermission by remember { mutableStateOf(false) }
+    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(
+        Manifest.permission.BLUETOOTH_CONNECT,
+        Manifest.permission.BLUETOOTH_SCAN,
+    ) else listOf(
+        Manifest.permission.BLUETOOTH,
+    )
+    val bluetoothPermissionState = rememberMultiplePermissionsState(permissions = permissions)
+    var showPermissionDialog by remember { mutableStateOf(false) }
+
+    fun isPermissionGranted(): Boolean {
+        val denied = bluetoothPermissionState.permissions.filter {
+            !it.status.isGranted
+        }
+
+        return denied.isEmpty()
+    }
 
     LaunchedEffect(key1 = Unit) {
+        prefManager.setSelectedMotorcycleId("")
         viewModel.getMotorcycles()
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !checkedPermission) {
+        CheckPermission(onPermissionGranted = {
+            checkedPermission = true
+        }, onPermissionDenied = {
+            checkedPermission = true
+            showPermissionDialog = true
+        })
     }
 
     Box (
@@ -110,7 +161,9 @@ fun MyMotorcycleScreen(
                     "Add New",
                     style = MaterialTheme.typography.button,
                     modifier = Modifier
-                        .clickable { navController.navigate(Screen.MotorcycleTypes.route) }
+                        .clickable {
+                            navController.navigate(Screen.MotorcycleTypes.route)
+                        }
                         .background(color = Green, shape = RoundedCornerShape(4.dp))
                         .padding(vertical = 6.dp, horizontal = 12.dp)
                 )
@@ -146,6 +199,45 @@ fun MyMotorcycleScreen(
                                 .background(Color(0xFF353535))
                                 .padding(horizontal = 12.dp, vertical = 10.dp)
                                 .fillMaxWidth()
+                                .clickable {
+                                    if (!isPermissionGranted()) {
+                                        bluetoothPermissionState.launchMultiplePermissionRequest()
+                                        return@clickable
+                                    }
+
+                                    isConnecting.value = true
+                                    selectedMacAddress.value = it.macAddress
+                                    bluetoothViewModel.connectDevice(
+                                        BluetoothDevice(
+                                            "",
+                                            it.macAddress,
+                                            it.name,
+                                        ),
+                                        "",
+                                        callback = { success, message ->
+                                            if (success) {
+                                                prefManager.setSelectedMotorcycleId(it.deviceId)
+                                                navController.navigate(Screen.DetailDevice.route)
+                                            } else {
+                                                context
+                                                    .findActivity()
+                                                    ?.runOnUiThread {
+                                                        Toast
+                                                            .makeText(
+                                                                context,
+                                                                message,
+                                                                Toast.LENGTH_LONG
+                                                            )
+                                                            .show()
+                                                    }
+                                            }
+
+                                            isConnecting.value = false
+                                            selectedMacAddress.value = null
+                                        },
+                                        onDataReceived = {}
+                                    )
+                                }
                         ) {
                             Column {
                                 Text(it.name, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = White),)
@@ -153,7 +245,11 @@ fun MyMotorcycleScreen(
                                 Text(it.motorcycleType?.name ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
                             }
 
-                            Text(it.deviceId, style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
+                            if (isConnecting.value && selectedMacAddress.value == it.macAddress) {
+                                LoadingIndicator()
+                            } else {
+                                Text(it.deviceId, style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
+                            }
                         }
                     }
                 }

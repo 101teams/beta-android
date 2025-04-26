@@ -35,6 +35,14 @@ class PrefManager(
         return getData("motorcycle_code", "").toIntOrNull()
     }
 
+    fun setSelectedMotorcycleId(id: String) {
+        saveData("selected_motorcycle_id", id.toString())
+    }
+
+    fun getSelectedMotorcycleId(): String {
+        return getData("selected_motorcycle_id", "")
+    }
+
     fun setMotorcycleVIN(vin: String) {
         saveData("motorcycle_vin", vin)
     }

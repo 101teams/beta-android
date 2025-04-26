@@ -80,6 +80,7 @@ import com.betamotor.app.theme.GrayLight
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.LocalLogging
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -349,6 +350,7 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                     .padding(top = 12.dp),
                 contentPadding = PaddingValues(0.dp),
                 onClick = {
+                    prefManager.setSelectedMotorcycleId("")
                     btViewModel.disconnectDevice()
                     navController.popBackStack()
                 },
@@ -507,7 +509,7 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                                                     }
                                                 """.trimIndent()
 
-                                                MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleTypeId()}/enginedata", jsonPayload)
+                                                MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
 
                                                 streamData()
                                             }
@@ -687,7 +689,7 @@ fun page2(prefManager: PrefManager, context: Context) {
                               "homolCode": "${homologation.value}"
                             }
                         """.trimIndent()
-                        MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleTypeId()}/engineinfo", jsonPayload)
+                        MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
                     }
                 }
             }
@@ -757,7 +759,7 @@ fun page3(prefManager: PrefManager, context: Context) {
                             }
                         """.trimIndent()
 
-                        MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleTypeId()}/idleadjustment", jsonPayload)
+                        MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/idleadjustment", jsonPayload)
 
                         getTuneData(btViewModel, constants.TUNE_MIN, true, null)
                     }
@@ -1036,7 +1038,7 @@ fun page4(prefManager: PrefManager, context: Context, navController: NavControll
                             }
                         """.trimIndent()
 
-                MQTTHelper(context).publishMessage("Beta/${prefManager.getMotorcycleTypeId()}/enginediagnose", jsonPayload)
+                MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginediagnose", jsonPayload)
 
                 tvTitleData.value = tempData
             }

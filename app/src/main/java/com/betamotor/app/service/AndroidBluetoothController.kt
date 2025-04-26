@@ -24,6 +24,7 @@ import com.betamotor.app.data.bluetooth.BluetoothDeviceDomain
 import com.betamotor.app.data.bluetooth.FoundDeviceReceiver
 import com.betamotor.app.data.bluetooth.toBluetoothDeviceDomain
 import com.betamotor.app.utils.LocalLogging
+import com.betamotor.app.utils.MQTTHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -253,6 +254,7 @@ class AndroidBluetoothController(
         fun onDataReadReceived(data: ByteArray, fromUUID: UUID) {
             LocalLogging().writeLog(context, "Read Data From => $fromUUID")
             LocalLogging().writeLog(context, "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+            MQTTHelper(context).publishMessage("BetaDebug", "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
 
             if (fromUUID == SCScharUuidRx) {
                 if (data.size >= 12) {
@@ -360,6 +362,10 @@ class AndroidBluetoothController(
                     onDataReceivedCallback(data[5], data)
                 } else {
                     LocalLogging().writeLog(context, "Read Data DES failed, data length < 6")
+                    Toast.makeText(
+                        context,
+                        "Read Data DES failed, data length < 6", Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -557,29 +563,34 @@ class AndroidBluetoothController(
         callback: (Boolean, String) -> Unit,
         onDataReceived: (String) -> Unit
     ) {
-        // remove bond to make sure notification is sent from ble
-        unpairDevice(device)
+        try {
+            // remove bond to make sure notification is sent from ble
+            unpairDevice(device)
 
-        stopDiscovery()
+            stopDiscovery()
 
-        val btDevice = bluetoothAdapter?.getRemoteDevice(device.macAddress)
-        this@AndroidBluetoothController.password = password
+            val btDevice = bluetoothAdapter?.getRemoteDevice(device.macAddress)
 
-        // uses transport_le because sometime gatt error 133 when not using it
-        gatt = btDevice?.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
-        clearServicesCache()
+            this@AndroidBluetoothController.password = password
 
-        fun connectDeviceCallback(isSuccess: Boolean, message: String) {
-            if (!message.isDeviceMessage()) {
+            // uses transport_le because sometime gatt error 133 when not using it
+            gatt = btDevice?.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            clearServicesCache()
 
+            fun connectDeviceCallback(isSuccess: Boolean, message: String) {
+                if (!message.isDeviceMessage()) {
+
+                }
+
+                callback(isSuccess, message)
             }
 
-            callback(isSuccess, message)
-        }
-
-        startTimerForTimeout { isSuccess, error ->
-            Log.d("helow", "timeout")
-            connectDeviceCallback(isSuccess, error)
+            startTimerForTimeout { isSuccess, error ->
+                Log.d("helow", "timeout")
+                connectDeviceCallback(isSuccess, error)
+            }
+        } catch (e: IllegalArgumentException) {
+            callback(false, "Invalid Bluetooth address: ${device.macAddress}")
         }
     }
 
