@@ -1,6 +1,7 @@
 package com.betamotor.app.utils
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -14,6 +15,7 @@ import java.util.Locale
 class LocalLogging {
     private val fileName = "app_log.txt"
     fun writeLog(context: Context, log: String) {
+        Log.d("helow", "localLogging write: $log")
         try {
             val file = File(context.filesDir, fileName)
 

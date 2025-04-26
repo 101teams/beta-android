@@ -10,7 +10,9 @@ import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
@@ -19,6 +21,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import com.betamotor.app.BuildConfig
 import com.betamotor.app.R
 import com.betamotor.app.data.bluetooth.BluetoothDeviceDomain
 import com.betamotor.app.data.bluetooth.FoundDeviceReceiver
@@ -42,7 +45,7 @@ import kotlin.experimental.xor
 class AndroidBluetoothController(
     private val context: Context
 ) : BluetoothController {
-    private val deviceNameFilter = "Beta"
+    private val deviceNameFilter = if (BuildConfig.DEBUG) "" else "Beta"
     private val SCSUuid = UUID.fromString("b6ff6ee9-90bf-4f16-8f83-922db0431472")
     private val SCScharUuidWx = UUID.fromString("4c069b22-5a1b-4d8f-a3f1-84fe8b9d901c") // write
     private val SCScharUuidRx = UUID.fromString("58ae4252-fc41-4ea7-baf3-8982586bb53e") // read
@@ -113,6 +116,38 @@ class AndroidBluetoothController(
         }
     }
 
+    private val bondStateReceiver = BondStateReceiver { _, bondState, _ ->
+        Log.d("helow", "bond state changed: $bondState")
+        when(bondState) {
+            BluetoothDevice.BOND_BONDED -> {
+                Log.d("helow", "device bonded")
+                _isConnectionAuthorized.value = true
+                cancelTimer()
+                timeoutCallback(true, "")
+            }
+
+            BluetoothDevice.BOND_BONDING -> {
+                Log.d("helow", "device bonding")
+            }
+
+            BluetoothDevice.BOND_NONE -> {
+                Log.d("helow", "device not bonded")
+            }
+        }
+    }
+
+    private val pairingRequestReceiver = PairingRequestReceiver { device, type, pin ->
+        Log.d("helow", "pairing request received: type: $type, pin: $pin")
+
+        if (_connectedDevice.value == null) {
+            return@PairingRequestReceiver
+        }
+
+        if (device.address != _connectedDevice.value?.macAddress) {
+            return@PairingRequestReceiver
+        }
+    }
+
     @OptIn(ExperimentalUnsignedTypes::class)
     private val gattCallback = object : BluetoothGattCallback() {
 
@@ -168,9 +203,51 @@ class AndroidBluetoothController(
                         resetLocalState()
                     }
                 }
-            } else {
-                gatt?.close()
-                resetLocalState()
+
+                return
+            }
+
+            // handle connection failed, most of the time 133 unknown error
+            disconnectDevice()
+            gatt?.close()
+            resetLocalState()
+
+            when(status) {
+                BluetoothGatt.GATT_CONNECTION_CONGESTED -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: connection congested")
+                }
+
+                BluetoothGatt.GATT_FAILURE -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: connection failure")
+                }
+
+                BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: insufficient authentication")
+                }
+
+                BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: insufficient encryption")
+                }
+
+                BluetoothGatt.GATT_INVALID_OFFSET -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: invalid offset")
+                }
+
+                BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: read not permitted")
+                }
+
+                BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: request not supported")
+                }
+
+                BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: write not permitted")
+                }
+
+                else -> {
+                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: unknown status: $status")
+                }
             }
         }
 
@@ -456,6 +533,16 @@ class AndroidBluetoothController(
             IntentFilter(BluetoothDevice.ACTION_FOUND)
         )
 
+        context.registerReceiver(
+            bondStateReceiver,
+            IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        )
+
+        context.registerReceiver(
+            pairingRequestReceiver,
+            IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST)
+        )
+
         updatePairedDevices()
 
         bluetoothAdapter?.startDiscovery()
@@ -545,8 +632,8 @@ class AndroidBluetoothController(
             ?.also { _pairedDevices.update { it } }
     }
 
-    private fun unpairDevice(device: BluetoothDeviceDomain) {
-        val btDevice = bluetoothAdapter?.getRemoteDevice(device.macAddress) ?: return
+    private fun unpairDevice(macAddress: String) {
+        val btDevice = bluetoothAdapter?.getRemoteDevice(macAddress) ?: return
         try {
             val method: Method = btDevice.javaClass.getMethod("removeBond")
             val result = method.invoke(btDevice) as Boolean
@@ -563,25 +650,34 @@ class AndroidBluetoothController(
         callback: (Boolean, String) -> Unit,
         onDataReceived: (String) -> Unit
     ) {
+        LocalLogging().writeLog(context, "connecting to device ${device.macAddress}")
         try {
             // remove bond to make sure notification is sent from ble
-            unpairDevice(device)
+            unpairDevice(device.macAddress)
 
             stopDiscovery()
 
             val btDevice = bluetoothAdapter?.getRemoteDevice(device.macAddress)
 
+            if (btDevice == null) {
+                LocalLogging().writeLog(context, "Device not found")
+                callback(false, "Device not found")
+                return
+            } else {
+                LocalLogging().writeLog(context, "Device found")
+            }
+
             this@AndroidBluetoothController.password = password
 
             // uses transport_le because sometime gatt error 133 when not using it
-            gatt = btDevice?.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            gatt = if (BuildConfig.DEBUG) {
+                btDevice.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_AUTO)
+            } else {
+                btDevice.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            }
             clearServicesCache()
 
             fun connectDeviceCallback(isSuccess: Boolean, message: String) {
-                if (!message.isDeviceMessage()) {
-
-                }
-
                 callback(isSuccess, message)
             }
 
@@ -596,7 +692,7 @@ class AndroidBluetoothController(
 
     private fun startTimerForTimeout(callback: (Boolean, String) -> Unit) {
         timeoutCallback = callback
-        val duration: Long = 10_000 // 10s in millisecond
+        val duration: Long = 20_000 // 10s in millisecond
         timer = Timer()
         timer?.schedule(duration) {
             timeoutCallback(false, context.getString(R.string.connection_timeout))
@@ -751,4 +847,58 @@ class AndroidBluetoothController(
 
 fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean {
     return properties and property != 0
+}
+
+class BondStateReceiver (
+    private val onStateChanged: (BluetoothDevice, Int, Int) -> Unit
+) : BroadcastReceiver() {
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        when (intent?.action) {
+            BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(
+                        BluetoothDevice.EXTRA_DEVICE,
+                        BluetoothDevice::class.java
+                    )
+                } else {
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                }
+
+                val bondState = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
+                val previousBondState = intent.getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1)
+
+                device?.let {
+                    onStateChanged(it, bondState, previousBondState)
+                }
+            }
+        }
+    }
+}
+
+class PairingRequestReceiver (
+    private val onPairingRequest: (BluetoothDevice, Int, ByteArray?) -> Unit
+) : BroadcastReceiver() {
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        when (intent?.action) {
+            BluetoothDevice.ACTION_PAIRING_REQUEST -> {
+                val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(
+                        BluetoothDevice.EXTRA_DEVICE,
+                        BluetoothDevice::class.java
+                    )
+                } else {
+                    intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                }
+
+                val type = intent.getIntExtra(BluetoothDevice.EXTRA_PAIRING_VARIANT, -1)
+                val pin = intent.getByteArrayExtra(BluetoothDevice.EXTRA_PAIRING_KEY)
+
+                device?.let {
+                    onPairingRequest(it, type, pin)
+                }
+            }
+        }
+    }
 }
