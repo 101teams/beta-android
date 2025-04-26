@@ -13,11 +13,15 @@ import java.util.Locale
 
 class LocalLogging {
     private val fileName = "app_log.txt"
-
     fun writeLog(context: Context, log: String) {
-        val file = File(context.filesDir, fileName)
-
         try {
+            val file = File(context.filesDir, fileName)
+
+            // Create the file if it doesn't exist
+            if (!file.exists()) {
+                file.createNewFile()
+            }
+
             val timestampMillis = System.currentTimeMillis()
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
             val timestamp = sdf.format(timestampMillis)
@@ -28,14 +32,20 @@ class LocalLogging {
                 fos.write("\n".toByteArray())
             }
         } catch (e: IOException) {
+            MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
         }
     }
 
     fun readLog(context: Context): List<Pair<String?, String?>> {
+        val logs = mutableListOf<Pair<String?, String?>>()
         val file = File(context.filesDir, fileName)
 
-        val logs = mutableListOf<Pair<String?, String?>>()
+        // Check if the file exists before attempting to read
+        if (!file.exists()) {
+            // File doesn't exist yet, return empty list
+            return logs
+        }
 
         return try {
             FileInputStream(file).use { fis ->
@@ -52,14 +62,14 @@ class LocalLogging {
 
             logs
         } catch (e: IOException) {
+            MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
             logs
         }
     }
     fun clearLog(context: Context) {
-        val file = File(context.filesDir, fileName)
-
         try {
+            val file = File(context.filesDir, fileName)
             FileOutputStream(file).use { fos ->
                 fos.write("".toByteArray())
             }
