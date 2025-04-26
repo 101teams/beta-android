@@ -28,9 +28,13 @@ class MQTTHelper(context: Context) {
     }
 
     fun publishMessage(topic: String, message: String) {
-        Log.d("MQTT", "$topic => $message")
-        val mqttMessage = MqttMessage()
-        mqttMessage.payload = message.toByteArray()
-        mqttClient.publish(topic, mqttMessage)
+        try {
+            Log.d("MQTT", "$topic => $message")
+            val mqttMessage = MqttMessage()
+            mqttMessage.payload = message.toByteArray()
+            mqttClient.publish(topic, mqttMessage)
+        } catch (e: MqttException) {
+            Log.e("MQTT", "Error publishing message: ${e.message}")
+        }
     }
 }

@@ -308,157 +308,134 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
         }
     }
 
+    fun extractResData(fullData: ByteArray): Int {
+        return when {
+            fullData.size > 7 -> ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+            fullData.size > 6 -> fullData[6].toUByte().toInt()
+            else -> 0
+        }
+    }
+
+    fun extractSignedResData(fullData: ByteArray): Int {
+        return when {
+            fullData.size > 7 -> convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
+            fullData.size > 6 -> convertSignedTwosComplement(fullData[6].toInt(), 8)
+            else -> 0
+        }
+    }
+
+    fun nextCommand(nextRliId: Int, data: ByteArray) {
+        data[3] = ((nextRliId shr 8) and 0xFF).toByte()
+        data[4] = (nextRliId and 0xFF).toByte()
+
+        if (isStreaming.value) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                btViewModel.sendCommandByteDES(data)
+            }, 50)
+        }
+    }
+
     fun onDESDataReceived(rliID: Byte, fullData: ByteArray) {
         LocalLogging().writeLog(context, "DES data received: rliID = $rliID; ${fullData.joinToString(", ")}")
 
         val data = ByteArray(5)
-        data[0] = ((0x0101 shr 8) and 0xFF)
-        data[1] = 0x0101 and 0xFF
+        data[0] = ((0x0101 shr 8) and 0xFF).toByte()
+        data[1] = (0x0101 and 0xFF).toByte()
         data[2] = 0x02
 
         scope.launch {
             try {
-                if (fullData[1].toInt() == 0x0101 and 0xFF){
-                    when(rliID) {
+                if (fullData[1].toInt() == 0x0101 and 0xFF) {
+                    when (rliID) {
                         constants.RLI_ENGINE_SPEED.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_ENGINE_SPEED received")
-                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+                            val resData = extractResData(fullData)
                             LocalLogging().writeLog(context, "RLI_ENGINE_SPEED data: $resData")
                             rpm.value = resData.toString()
                             saveCsvData("RPM", resData.toString())
 
-                            data[3] = ((constants.RLI_GAS_POSITION shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_GAS_POSITION and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_GAS_POSITION, data)
                         }
                         constants.RLI_GAS_POSITION.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_GAS_POSITION received")
-                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                            LocalLogging().writeLog(context, "RLI_GAS_POSITION data: ${resData/16}")
-                            gasPosition.value = (resData/16).toString()
-                            saveCsvData("THROTTLE", (resData/16).toString())
+                            val resData = extractResData(fullData)
+                            LocalLogging().writeLog(context, "RLI_GAS_POSITION data: ${resData / 16}")
+                            gasPosition.value = (resData / 16).toString()
+                            saveCsvData("THROTTLE", (resData / 16).toString())
 
-                            data[3] = ((constants.RLI_ACTUATED_SPARK shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_ACTUATED_SPARK and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_ACTUATED_SPARK, data)
                         }
                         constants.RLI_ACTUATED_SPARK.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_ACTUATED_SPARK received")
-                            val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-                            LocalLogging().writeLog(context, "RLI_ACTUATED_SPARK data: ${resData/16}")
-                            actuatedSpark.value = (resData/16).toString()
-                            saveCsvData("SPARK ADV", (resData/16).toString())
+                            val resData = extractSignedResData(fullData)
+                            LocalLogging().writeLog(context, "RLI_ACTUATED_SPARK data: ${resData / 16}")
+                            actuatedSpark.value = (resData / 16).toString()
+                            saveCsvData("SPARK ADV", (resData / 16).toString())
 
-                            data[3] = ((constants.RLI_COOLANT_TEMP shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_COOLANT_TEMP and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_COOLANT_TEMP, data)
                         }
                         constants.RLI_COOLANT_TEMP.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_COOLANT_TEMP received")
-                            val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-                            LocalLogging().writeLog(context, "RLI_COOLANT_TEMP data: ${resData/16}")
-                            engineCoolant.value = (resData/16).toString()
-                            saveCsvData("ENGINE TEMP", (resData/16).toString())
+                            val resData = extractSignedResData(fullData)
+                            LocalLogging().writeLog(context, "RLI_COOLANT_TEMP data: ${resData / 16}")
+                            engineCoolant.value = (resData / 16).toString()
+                            saveCsvData("ENGINE TEMP", (resData / 16).toString())
 
-                            data[3] = ((constants.RLI_AIR_TEMP shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_AIR_TEMP and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_AIR_TEMP, data)
                         }
                         constants.RLI_AIR_TEMP.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_AIR_TEMP received")
-                            val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-                            LocalLogging().writeLog(context, "RLI_AIR_TEMP data: ${resData/16}")
-                            airTemp.value = (resData/16).toString()
-                            saveCsvData("AIR TEMP", (resData/16).toString())
+                            val resData = extractSignedResData(fullData)
+                            LocalLogging().writeLog(context, "RLI_AIR_TEMP data: ${resData / 16}")
+                            airTemp.value = (resData / 16).toString()
+                            saveCsvData("AIR TEMP", (resData / 16).toString())
 
-                            data[3] = ((constants.RLI_ATMOSPHERE_PRESSURE shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_ATMOSPHERE_PRESSURE and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_ATMOSPHERE_PRESSURE, data)
                         }
                         constants.RLI_ATMOSPHERE_PRESSURE.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_ATMOSPHERE_PRESSURE received")
-                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+                            val resData = extractResData(fullData)
                             LocalLogging().writeLog(context, "RLI_ATMOSPHERE_PRESSURE data: $resData")
                             atmospherePressure.value = resData.toString()
                             saveCsvData("ATM PRESSURE", resData.toString())
 
-                            data[3] = ((constants.RLI_OPERATING_HOURS shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_OPERATING_HOURS and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_OPERATING_HOURS, data)
                         }
                         constants.RLI_OPERATING_HOURS.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_OPERATING_HOURS received")
-                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                            LocalLogging().writeLog(context, "RLI_OPERATING_HOURS data: ${resData/8}")
-                            operatingHours.value = (resData/8).toString()
-                            saveCsvData("OP. TIME", (resData/8).toString())
+                            val resData = extractResData(fullData)
+                            LocalLogging().writeLog(context, "RLI_OPERATING_HOURS data: ${resData / 8}")
+                            operatingHours.value = (resData / 8).toString()
+                            saveCsvData("OP. TIME", (resData / 8).toString())
 
-                            data[3] = ((constants.RLI_BATTERY_VOLTAGE shr 8) and 0xFF).toByte()
-                            data[4] = (constants.RLI_BATTERY_VOLTAGE and 0xFF).toByte()
-
-                            if (isStreaming.value) {
-                                Handler(Looper.getMainLooper()).postDelayed({
-                                    btViewModel.sendCommandByteDES(data)
-                                },50)
-                            }
+                            nextCommand(constants.RLI_BATTERY_VOLTAGE, data)
                         }
                         constants.RLI_BATTERY_VOLTAGE.toByte() -> {
                             LocalLogging().writeLog(context, "RLI_BATTERY_VOLTAGE received")
-                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                            LocalLogging().writeLog(context, "RLI_BATTERY_VOLTAGE data: ${resData/16}")
+                            val resData = extractResData(fullData)
+                            LocalLogging().writeLog(context, "RLI_BATTERY_VOLTAGE data: ${resData / 16}")
 
-                            batteryVoltage.value = (resData/16).toString()
-                            saveCsvData("BATTERY VOLTAGE", (resData/16).toString())
+                            batteryVoltage.value = (resData / 16).toString()
+                            saveCsvData("BATTERY VOLTAGE", (resData / 16).toString())
 
                             val jsonPayload = """
-                                                    {
-                                                      "vin": "${prefManager.getMotorcycleVIN()}",
-                                                      "rpm": ${rpm.value},
-                                                      "throttle": ${gasPosition.value},
-                                                      "sparkAdv": ${actuatedSpark.value},
-                                                      "engineTemp": ${engineCoolant.value},
-                                                      "airTemp": ${airTemp.value},
-                                                      "atmPressure": ${atmospherePressure.value},
-                                                      "opTime": ${operatingHours.value},
-                                                      "batteryVoltage": ${batteryVoltage.value}
-                                                    }
-                                                """.trimIndent()
+                            {
+                              "vin": "${prefManager.getMotorcycleVIN()}",
+                              "rpm": ${rpm.value},
+                              "throttle": ${gasPosition.value},
+                              "sparkAdv": ${actuatedSpark.value},
+                              "engineTemp": ${engineCoolant.value},
+                              "airTemp": ${airTemp.value},
+                              "atmPressure": ${atmospherePressure.value},
+                              "opTime": ${operatingHours.value},
+                              "batteryVoltage": ${batteryVoltage.value}
+                            }
+                        """.trimIndent()
 
                             MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
 
                             streamData()
                         }
-
                         else -> {
                             LocalLogging().writeLog(context, "Unknown data received. RliId: $rliID; data: $fullData")
                         }
