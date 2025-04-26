@@ -16,6 +16,7 @@ class LocalLogging {
     private val fileName = "app_log.txt"
     fun writeLog(context: Context, log: String) {
         Log.d("helow", "localLogging write: $log")
+        MQTTHelper(context).publishMessage("BetaDebug", log)
         try {
             val file = File(context.filesDir, fileName)
 
@@ -33,7 +34,7 @@ class LocalLogging {
                 fos.write(logJson.toByteArray())
                 fos.write("\n".toByteArray())
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
         }
@@ -63,7 +64,7 @@ class LocalLogging {
             }
 
             logs
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
             logs
