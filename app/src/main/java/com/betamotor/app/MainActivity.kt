@@ -17,12 +17,9 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-    @Inject
-    lateinit var logger: LocalLogging
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        logger.writeLog("Application started")
 
         val serviceIntent = Intent(this, LogNotificationService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)

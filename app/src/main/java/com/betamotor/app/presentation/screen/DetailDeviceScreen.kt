@@ -37,7 +37,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,11 +81,8 @@ import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.LocalLogging
-import com.betamotor.app.utils.LoggerViewModel
-import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.MqttViewModel
 import com.betamotor.app.utils.PrefManager
-import com.google.accompanist.pager.ExperimentalPagerApi
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -250,7 +246,7 @@ fun DetailDeviceScreen(
 
 @Composable
 fun page1(navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>, prefManager: PrefManager, context: Context) {
-    val logger = hiltViewModel<LoggerViewModel>()
+    val logger = LocalLogging(context)
     val mqtt = hiltViewModel<MqttViewModel>()
     val isRecording = remember { mutableStateOf(false) }
     val rpm = remember { mutableStateOf("-") }
@@ -267,6 +263,10 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
 
     var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
 
+    LaunchedEffect(Unit) {
+        logger.writeLog("change tab to page 1")
+    }
+
     LaunchedEffect(lifecycleEvent) {
         when (lifecycleEvent) {
             Lifecycle.Event.ON_PAUSE -> {
@@ -278,7 +278,7 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
     }
 
     fun streamData(){
-        Log.d("call steam", isStreaming.value.toString())
+        logger.writeLog("fetching ENGINE_SPEED")
         if (isStreaming.value) {
 
             val data = ByteArray(5)
@@ -650,6 +650,7 @@ fun getTuneData(btViewModel: BluetoothViewModel, rliId: Int, isRead: Boolean, wr
 @Composable
 fun page2(prefManager: PrefManager, context: Context) {
     val mqtt = hiltViewModel<MqttViewModel>()
+    val logger = LocalLogging(context)
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val vin = remember { mutableStateOf("-") }
     val ecuDRW = remember { mutableStateOf("-") }
@@ -659,38 +660,55 @@ fun page2(prefManager: PrefManager, context: Context) {
     val homologation = remember { mutableStateOf("-") }
 
     LaunchedEffect(Unit) {
-        btViewModel.setOnReadDataDESCalback(onDataReceived = { rliID, fullData ->
-            if (fullData[1].toInt() == 0x0301 and 0xFF) {
-                when (rliID) {
-                    constants.ECU_VIN.toByte() -> {
-                        vin.value = convertVINData(fullData)
-                        prefManager.setMotorcycleVIN(vin.value)
+        logger.writeLog("change tab to page 2")
+    }
 
-                        getVINData(btViewModel, constants.ECU_DRAWING_NUMBER)
-                    }
-                    constants.ECU_DRAWING_NUMBER.toByte() -> {
-                        ecuDRW.value = convertVINData(fullData)
+    fun onDataReceived(rliID: Byte, fullData: ByteArray) {
 
-                        getVINData(btViewModel, constants.ECU_HW_NUMBER)
-                    }
-                    constants.ECU_HW_NUMBER.toByte() -> {
-                        ecuHW.value = convertVINData(fullData)
+        if (fullData[1].toInt() == 0x0301 and 0xFF) {
+            when (rliID) {
+                constants.ECU_VIN.toByte() -> {
+                    val newVal = convertVINData(fullData)
+                    vin.value = newVal
+                    prefManager.setMotorcycleVIN(vin.value)
 
-                        getVINData(btViewModel, constants.ECU_SW_NUMBER)
-                    }
-                    constants.ECU_SW_NUMBER.toByte() -> {
-                        ecuSW.value = convertVINData(fullData)
+                    logger.writeLog("ECU_VIN: $newVal => ${vin.value}. fetching ECU_DRAWING_NUMBER")
+                    getVINData(btViewModel, constants.ECU_DRAWING_NUMBER)
+                }
+                constants.ECU_DRAWING_NUMBER.toByte() -> {
+                    val newVal = convertVINData(fullData)
+                    ecuDRW.value = newVal
 
-                        getVINData(btViewModel, constants.ECU_SW_VERSION)
-                    }
-                    constants.ECU_SW_VERSION.toByte() -> {
-                        calibration.value = convertVINData(fullData)
+                    logger.writeLog("ECU_DRAWING_NUMBER: $newVal => ${ecuDRW.value}. fetching ECU_HW_NUMBER")
+                    getVINData(btViewModel, constants.ECU_HW_NUMBER)
+                }
+                constants.ECU_HW_NUMBER.toByte() -> {
+                    val newVal = convertVINData(fullData)
+                    ecuHW.value = newVal
 
-                        getVINData(btViewModel, constants.ECU_HOMOLOGATION)
-                    }
-                    constants.ECU_HOMOLOGATION.toByte() -> {
-                        homologation.value = convertVINData(fullData)
-                        val jsonPayload = """
+                    logger.writeLog("ECU_HW_NUMBER: $newVal => ${ecuHW.value}. fetching ECU_SW_NUMBER")
+                    getVINData(btViewModel, constants.ECU_SW_NUMBER)
+                }
+                constants.ECU_SW_NUMBER.toByte() -> {
+                    val newVal = convertVINData(fullData)
+                    ecuSW.value = newVal
+
+                    logger.writeLog("ECU_SW_NUMBER: $newVal => ${ecuSW.value}. fetching ECU_SW_VERSION")
+                    getVINData(btViewModel, constants.ECU_SW_VERSION)
+                }
+                constants.ECU_SW_VERSION.toByte() -> {
+                    val newVal = convertVINData(fullData)
+                    calibration.value = newVal
+
+                    logger.writeLog("ECU_SW_VERSION: $newVal => ${calibration.value}. fetching ECU_HOMOLOGATION")
+                    getVINData(btViewModel, constants.ECU_HOMOLOGATION)
+                }
+                constants.ECU_HOMOLOGATION.toByte() -> {
+                    val newVal = convertVINData(fullData)
+                    homologation.value = newVal
+                    logger.writeLog("ECU_HOMOLOGATION $newVal =>: ${homologation.value}")
+
+                    val jsonPayload = """
                             {
                               "vin": "${vin.value}",
                               "ecuDrw": "${ecuDRW.value}",
@@ -700,13 +718,26 @@ fun page2(prefManager: PrefManager, context: Context) {
                               "homolCode": "${homologation.value}"
                             }
                         """.trimIndent()
-                        mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
-                    }
+                    mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
                 }
             }
-        })
+        }
+    }
 
+
+    LaunchedEffect(Unit) {
+        btViewModel.setOnReadDataDESCalback(onDataReceived = {rliID, fullData -> onDataReceived(rliID, fullData) })
+
+        logger.writeLog("fetching ECU_VIN")
         getVINData(btViewModel, constants.ECU_VIN)
+
+        if (BuildConfig.DEBUG) { // for testing purpose
+            val info = byteArrayOf(
+                0x03, 0x01, 0x00, 0x0D, 0x00, 0x03, 0x48, 0x30, 0x34, 0x35, 0x36, 0x34, 0x30, 0x30, 0x20, 0x20, 0x20
+            )
+
+            onDataReceived(info[5], info)
+        }
     }
     Column(
         modifier = Modifier

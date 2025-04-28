@@ -1,7 +1,6 @@
 package com.betamotor.app
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -26,17 +25,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.betamotor.app.utils.LocalLogging
-import com.betamotor.app.utils.LoggerViewModel
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
-@AndroidEntryPoint
 class LogActivity : ComponentActivity() {
-    @Inject
-    lateinit var logger: LocalLogging
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -47,7 +38,7 @@ class LogActivity : ComponentActivity() {
 
 @Composable
 fun LogScreen() {
-    val logger = hiltViewModel<LoggerViewModel>()
+    val logger = LocalLogging(LocalContext.current)
     val logContent = logger.readLog()
 
     val logData = remember { mutableStateOf(logContent) }

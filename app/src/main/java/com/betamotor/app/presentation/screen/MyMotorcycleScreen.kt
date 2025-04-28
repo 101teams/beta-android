@@ -59,7 +59,6 @@ import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.LocalLogging
-import com.betamotor.app.utils.LoggerViewModel
 import com.betamotor.app.utils.PrefManager
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -70,13 +69,13 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 fun MyMotorcycleScreen(
     navController: NavController
 ) {
-    val logger = hiltViewModel<LoggerViewModel>()
+    val context = LocalContext.current
+    val logger = LocalLogging(context)
     val authViewModel = hiltViewModel<AuthViewModel>()
     val viewModel = hiltViewModel<MotorcycleViewModel>()
     val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
     val isLoading = viewModel.isLoading.collectAsState()
     val myMotorcycles = viewModel.motorcycles.collectAsState()
-    val context = LocalContext.current
     val prefManager = PrefManager(context)
     val isConnecting = remember { mutableStateOf(false) }
     val selectedMacAddress = remember { mutableStateOf<String?>(null) }

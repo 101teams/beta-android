@@ -44,9 +44,9 @@ import kotlin.experimental.xor
 @SuppressLint("MissingPermission")
 class AndroidBluetoothController(
     private val context: Context,
-    private val mqttHelper: MQTTHelper,
-    private val logger: LocalLogging
+    private val mqttHelper: MQTTHelper
 ) : BluetoothController {
+    private val logger = LocalLogging(context)
     private val deviceNameFilter = if (BuildConfig.DEBUG) "" else "Beta"
     private val SCSUuid = UUID.fromString("b6ff6ee9-90bf-4f16-8f83-922db0431472")
     private val SCScharUuidWx = UUID.fromString("4c069b22-5a1b-4d8f-a3f1-84fe8b9d901c") // write
@@ -767,7 +767,7 @@ class AndroidBluetoothController(
 
         Handler(Looper.getMainLooper()).postDelayed({
             gatt?.readCharacteristic(DESRX)
-        }, 100)
+        }, 50)
     }
 
     private fun sendCommandByte(command: ByteArray, characteristic: BluetoothGattCharacteristic) {

@@ -37,15 +37,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-    @Singleton
-    @Provides
-    fun provideLocalLogging(
-        @ApplicationContext appContext: Context,
-        mqttHelper: MQTTHelper
-    ): LocalLogging {
-        return LocalLogging(appContext, mqttHelper)
-    }
-
     @Provides
     @Singleton
     fun provideTokenStorage(@ApplicationContext context: Context): PrefManager {
@@ -60,8 +51,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideBluetoothController(@ApplicationContext context: Context, mqttHelper: MQTTHelper, logger: LocalLogging): BluetoothController {
-        return AndroidBluetoothController(context, mqttHelper, logger)
+    fun provideBluetoothController(@ApplicationContext context: Context, mqttHelper: MQTTHelper): BluetoothController {
+        return AndroidBluetoothController(context, mqttHelper)
     }
 
     @Provides

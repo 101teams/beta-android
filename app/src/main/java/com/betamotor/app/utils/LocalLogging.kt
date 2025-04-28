@@ -2,12 +2,6 @@ package com.betamotor.app.utils
 
 import android.content.Context
 import android.util.Log
-import androidx.lifecycle.ViewModel
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
@@ -17,48 +11,31 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Locale
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class LocalLogging @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val mqttHelper: MQTTHelper
-) {
+class LocalLogging(val context: Context) {
     private val fileName = "app_log.txt"
-    private val coroutineScope = CoroutineScope(Dispatchers.IO)
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-
     fun writeLog(log: String) {
         Log.d("helow", "localLogging write: $log")
+        try {
+            val file = File(context.filesDir, fileName)
 
-        // Publish message in background
-        mqttHelper.publishMessage("BetaDebug", log)
-
-        // Run file writing in background thread
-        coroutineScope.launch {
-            try {
-                val file = File(context.filesDir, fileName)
-
-                // Create the file if it doesn't exist
-                if (!file.exists()) {
-                    file.createNewFile()
-                }
-
-                val timestampMillis = System.currentTimeMillis()
-                val timestamp = dateFormat.format(timestampMillis)
-
-                FileOutputStream(file, true).use { fos ->
-                    val logJson = """{"message": "$log", "timestamp": "$timestamp"}"""
-                    fos.write(logJson.toByteArray())
-                    fos.write("\n".toByteArray())
-                }
-            } catch (e: Exception) {
-                // Handle exception in a way that doesn't create a circular dependency
-                Log.e("LocalLogging", "Error writing log: ${e.message}")
-                mqttHelper.publishMessage("BetaDebug", e.message.toString())
-                e.printStackTrace()
+            // Create the file if it doesn't exist
+            if (!file.exists()) {
+                file.createNewFile()
             }
+
+            val timestampMillis = System.currentTimeMillis()
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val timestamp = sdf.format(timestampMillis)
+
+            FileOutputStream(file, true).use { fos ->
+                val logJson = """{"message": "$log", "timestamp": "$timestamp"}"""
+                fos.write(logJson.toByteArray())
+                fos.write("\n".toByteArray())
+            }
+        } catch (e: Exception) {
+            MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
+            e.printStackTrace()
         }
     }
 
@@ -87,40 +64,19 @@ class LocalLogging @Inject constructor(
 
             logs
         } catch (e: Exception) {
-            mqttHelper.publishMessage("BetaDebug", e.message.toString())
+            MQTTHelper(context).publishMessage("BetaDebug", e.message.toString())
             e.printStackTrace()
             logs
         }
     }
-
     fun clearLog() {
-        coroutineScope.launch {
-            try {
-                val file = File(context.filesDir, fileName)
-                FileOutputStream(file).use { fos ->
-                    fos.write("".toByteArray())
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
+        try {
+            val file = File(context.filesDir, fileName)
+            FileOutputStream(file).use { fos ->
+                fos.write("".toByteArray())
             }
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
-    }
-}
-
-@HiltViewModel
-class LoggerViewModel @Inject constructor(
-    private val localLogging: LocalLogging
-) : ViewModel() {
-
-    fun writeLog(message: String) {
-        localLogging.writeLog(message)
-    }
-
-    fun readLog(): List<Pair<String?, String?>> {
-        return localLogging.readLog()
-    }
-
-    fun clearLog() {
-        localLogging.clearLog()
     }
 }
