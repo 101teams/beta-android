@@ -99,7 +99,7 @@ fun MyMotorcycleScreen(
     }
 
     LaunchedEffect(key1 = Unit) {
-        prefManager.setSelectedMotorcycleId("")
+        prefManager.clearSelectedMotorcycleId()
         viewModel.getMotorcycles()
     }
 

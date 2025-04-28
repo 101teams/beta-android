@@ -655,6 +655,8 @@ class AndroidBluetoothController(
         onDataReceived: (String) -> Unit
     ) {
         logger.writeLog("connecting to device ${device.macAddress}")
+        prefManager.clearMacAddress()
+
         try {
             // remove bond to make sure notification is sent from ble
             unpairDevice(device.macAddress)
@@ -683,7 +685,7 @@ class AndroidBluetoothController(
 
             fun connectDeviceCallback(isSuccess: Boolean, message: String) {
                 if (isSuccess) {
-                    prefManager.setMotorcycleVIN(device.macAddress)
+                    prefManager.setMacAddress(device.macAddress)
                 }
 
                 callback(isSuccess, message)

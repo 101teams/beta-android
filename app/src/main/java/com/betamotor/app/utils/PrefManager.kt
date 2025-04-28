@@ -43,6 +43,12 @@ class PrefManager(
         return getData("selected_motorcycle_id", "")
     }
 
+    fun clearSelectedMotorcycleId() {
+        val editor = sharedPreferences.edit()
+        editor.remove("selected_motorcycle_id")
+        editor.apply()
+    }
+
     // for now, use mac address for vin.
     fun setMotorcycleVIN(vin: String) {
         saveData("motorcycle_vin", vin)
@@ -86,5 +92,19 @@ class PrefManager(
 
     fun getRememberMe(): Boolean {
         return sharedPreferences.getBoolean("remember_me", false)
+    }
+
+    fun setMacAddress(macAddress: String) {
+        saveData("mac_address", macAddress)
+    }
+
+    fun getMacAddress(): String {
+        return getData("mac_address", "")
+    }
+
+    fun clearMacAddress() {
+        val editor = sharedPreferences.edit()
+        editor.remove("mac_address")
+        editor.apply()
     }
 }
