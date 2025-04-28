@@ -59,6 +59,7 @@ import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.LocalLogging
+import com.betamotor.app.utils.LoggerViewModel
 import com.betamotor.app.utils.PrefManager
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -69,6 +70,7 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 fun MyMotorcycleScreen(
     navController: NavController
 ) {
+    val logger = hiltViewModel<LoggerViewModel>()
     val authViewModel = hiltViewModel<AuthViewModel>()
     val viewModel = hiltViewModel<MotorcycleViewModel>()
     val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
@@ -162,6 +164,7 @@ fun MyMotorcycleScreen(
                     style = MaterialTheme.typography.button,
                     modifier = Modifier
                         .clickable {
+                            logger.writeLog("Add New Motorcycle Clicked")
                             navController.navigate(Screen.MotorcycleTypes.route)
                         }
                         .background(color = Green, shape = RoundedCornerShape(4.dp))

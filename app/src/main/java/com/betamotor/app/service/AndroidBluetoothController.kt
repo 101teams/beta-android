@@ -43,7 +43,9 @@ import kotlin.experimental.xor
 
 @SuppressLint("MissingPermission")
 class AndroidBluetoothController(
-    private val context: Context
+    private val context: Context,
+    private val mqttHelper: MQTTHelper,
+    private val logger: LocalLogging
 ) : BluetoothController {
     private val deviceNameFilter = if (BuildConfig.DEBUG) "" else "Beta"
     private val SCSUuid = UUID.fromString("b6ff6ee9-90bf-4f16-8f83-922db0431472")
@@ -170,12 +172,12 @@ class AndroidBluetoothController(
             onDataReadReceived(value, characteristic.uuid)
         }
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-            LocalLogging().writeLog(context, "ConnectionStateChange ${status} | ${newState}")
+            logger.writeLog("ConnectionStateChange ${status} | ${newState}")
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
                         val bondState = gatt?.device?.bondState
-                        LocalLogging().writeLog(context, "Bond State $bondState")
+                        logger.writeLog("Bond State $bondState")
 
                         if (bondState == BluetoothDevice.BOND_NONE || bondState == BluetoothDevice.BOND_BONDED) {
                             var delayWhenBonded: Long = 0
@@ -191,7 +193,7 @@ class AndroidBluetoothController(
                                 _connectedDevice.value = gatt.device?.toBluetoothDeviceDomain()
                                 val result = gatt.discoverServices()
                                 if (!result) {
-                                    LocalLogging().writeLog(context, "discover service failed to start")
+                                    logger.writeLog("discover service failed to start")
                                 }
                             }, delay)
                         }
@@ -214,39 +216,39 @@ class AndroidBluetoothController(
 
             when(status) {
                 BluetoothGatt.GATT_CONNECTION_CONGESTED -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: connection congested")
+                    logger.writeLog("BLE_CONNECT_ERR: connection congested")
                 }
 
                 BluetoothGatt.GATT_FAILURE -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: connection failure")
+                    logger.writeLog("BLE_CONNECT_ERR: connection failure")
                 }
 
                 BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: insufficient authentication")
+                    logger.writeLog("BLE_CONNECT_ERR: insufficient authentication")
                 }
 
                 BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: insufficient encryption")
+                    logger.writeLog("BLE_CONNECT_ERR: insufficient encryption")
                 }
 
                 BluetoothGatt.GATT_INVALID_OFFSET -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: invalid offset")
+                    logger.writeLog("BLE_CONNECT_ERR: invalid offset")
                 }
 
                 BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: read not permitted")
+                    logger.writeLog("BLE_CONNECT_ERR: read not permitted")
                 }
 
                 BluetoothGatt.GATT_REQUEST_NOT_SUPPORTED -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: request not supported")
+                    logger.writeLog("BLE_CONNECT_ERR: request not supported")
                 }
 
                 BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: write not permitted")
+                    logger.writeLog("BLE_CONNECT_ERR: write not permitted")
                 }
 
                 else -> {
-                    LocalLogging().writeLog(context, "BLE_CONNECT_ERR: unknown status: $status")
+                    logger.writeLog("BLE_CONNECT_ERR: unknown status: $status")
                 }
             }
         }
@@ -254,7 +256,7 @@ class AndroidBluetoothController(
         fun setServiceAndChars(service: BluetoothGattService) {
             when (service.uuid) {
                 SCSUuid -> {
-                    LocalLogging().writeLog(context, "Set SCS Service => ${service.uuid}")
+                    logger.writeLog("Set SCS Service => ${service.uuid}")
 
                     val SCSRX = service.getCharacteristic(SCScharUuidRx) ?: return
                     val SCSWX = service.getCharacteristic(SCScharUuidWx) ?: return
@@ -271,7 +273,7 @@ class AndroidBluetoothController(
                     },500)
                 }
                 DESUuid -> {
-                    LocalLogging().writeLog(context, "Set DES Service : ${service.uuid}")
+                    logger.writeLog("Set DES Service : ${service.uuid}")
 
                     val DESRX = service.getCharacteristic(DEScharUuidRx) ?: return
                     val DESWX = service.getCharacteristic(DEScharUuidWx) ?: return
@@ -293,12 +295,12 @@ class AndroidBluetoothController(
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val gattServices: List<BluetoothGattService> =
                     gatt?.services?.toList() ?: emptyList()
-                LocalLogging().writeLog(context, "Services count => ${gattServices.size}")
+                logger.writeLog("Services count => ${gattServices.size}")
                 for (gattService in gattServices) {
                     setServiceAndChars(gattService)
                 }
             } else {
-                LocalLogging().writeLog(context, "error. onServicesDiscovered received:  $status")
+                logger.writeLog("error. onServicesDiscovered received:  $status")
             }
         }
 
@@ -329,9 +331,9 @@ class AndroidBluetoothController(
 
         // use reusable function call for handling change event because of different supported version above
         fun onDataReadReceived(data: ByteArray, fromUUID: UUID) {
-            LocalLogging().writeLog(context, "Read Data From => $fromUUID")
-            LocalLogging().writeLog(context, "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
-            MQTTHelper(context).publishMessage("BetaDebug", "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+            logger.writeLog("Read Data From => $fromUUID")
+            logger.writeLog("Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+            mqttHelper.publishMessage("BetaDebug", "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
 
             if (fromUUID == SCScharUuidRx) {
                 if (data.size >= 12) {
@@ -379,12 +381,12 @@ class AndroidBluetoothController(
                             0x74966834u, 0x88aa497fu, 0xb02f4931u, 0x9a353d19u
                         )
 
-                        LocalLogging().writeLog(context, "Convert to unsigned int data from device => ${udata.joinToString(" ") { String.format("%02X", it.toInt()) }}")
-                        LocalLogging().writeLog(context, "Seed value (from converted packet) => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
+                        logger.writeLog("Convert to unsigned int data from device => ${udata.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+                        logger.writeLog("Seed value (from converted packet) => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
 
                         encipher(32u, seed, key)
 
-                        LocalLogging().writeLog(context, "Encipher result => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
+                        logger.writeLog("Encipher result => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
 
                         val packetWrite = UByteArray(14) { 0u }
                         packetWrite[0] = 0x01u
@@ -435,10 +437,10 @@ class AndroidBluetoothController(
                 }
             } else if (fromUUID == DEScharUuidRx) {
                 if (data.size >= 6) {
-                    LocalLogging().writeLog(context, "Read Data DES Success, send callback to ui")
+                    logger.writeLog("Read Data DES Success, send callback to ui")
                     onDataReceivedCallback(data[5], data)
                 } else {
-                    LocalLogging().writeLog(context, "Read Data DES failed, data length < 6")
+                    logger.writeLog("Read Data DES failed, data length < 6")
                     Toast.makeText(
                         context,
                         "Read Data DES failed, data length < 6", Toast.LENGTH_SHORT
@@ -650,7 +652,7 @@ class AndroidBluetoothController(
         callback: (Boolean, String) -> Unit,
         onDataReceived: (String) -> Unit
     ) {
-        LocalLogging().writeLog(context, "connecting to device ${device.macAddress}")
+        logger.writeLog("connecting to device ${device.macAddress}")
         try {
             // remove bond to make sure notification is sent from ble
             unpairDevice(device.macAddress)
@@ -660,11 +662,11 @@ class AndroidBluetoothController(
             val btDevice = bluetoothAdapter?.getRemoteDevice(device.macAddress)
 
             if (btDevice == null) {
-                LocalLogging().writeLog(context, "Device not found")
+                logger.writeLog("Device not found")
                 callback(false, "Device not found")
                 return
             } else {
-                LocalLogging().writeLog(context, "Device found")
+                logger.writeLog("Device found")
             }
 
             this@AndroidBluetoothController.password = password
@@ -765,11 +767,11 @@ class AndroidBluetoothController(
 
         Handler(Looper.getMainLooper()).postDelayed({
             gatt?.readCharacteristic(DESRX)
-        },500)
+        }, 100)
     }
 
     private fun sendCommandByte(command: ByteArray, characteristic: BluetoothGattCharacteristic) {
-        LocalLogging().writeLog(context, "Sending Command Byte to ${characteristic.uuid} => ${command.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+        logger.writeLog("Sending Command Byte to ${characteristic.uuid} => ${command.joinToString(" ") { String.format("%02X", it.toInt()) }}")
 
         // Set write type
         val writeType = when {

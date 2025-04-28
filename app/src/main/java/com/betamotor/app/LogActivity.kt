@@ -26,9 +26,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.betamotor.app.utils.LocalLogging
+import com.betamotor.app.utils.LoggerViewModel
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class LogActivity : ComponentActivity() {
+    @Inject
+    lateinit var logger: LocalLogging
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +47,8 @@ class LogActivity : ComponentActivity() {
 
 @Composable
 fun LogScreen() {
-    val context = LocalContext.current
-    val logContent = LocalLogging().readLog(context)
+    val logger = hiltViewModel<LoggerViewModel>()
+    val logContent = logger.readLog()
 
     val logData = remember { mutableStateOf(logContent) }
 
@@ -89,7 +96,7 @@ fun LogScreen() {
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             onClick = {
-                LocalLogging().clearLog(context)
+                logger.clearLog()
                 logData.value = mutableListOf()
             }
         ) {

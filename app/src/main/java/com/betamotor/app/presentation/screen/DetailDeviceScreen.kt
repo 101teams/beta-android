@@ -82,7 +82,9 @@ import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.LocalLogging
+import com.betamotor.app.utils.LoggerViewModel
 import com.betamotor.app.utils.MQTTHelper
+import com.betamotor.app.utils.MqttViewModel
 import com.betamotor.app.utils.PrefManager
 import com.google.accompanist.pager.ExperimentalPagerApi
 import kotlinx.coroutines.launch
@@ -90,20 +92,14 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalPagerApi::class)
 @Composable
 fun DetailDeviceScreen(
     navController: NavController
 ) {
     val viewModel = hiltViewModel<BluetoothViewModel>()
-    val state by viewModel.state.collectAsState()
 
     val context = LocalContext.current
     val prefManager = PrefManager(context)
-
-    fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
-        Toast.makeText(context, message, duration).show()
-    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
@@ -254,6 +250,8 @@ fun DetailDeviceScreen(
 
 @Composable
 fun page1(navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>, prefManager: PrefManager, context: Context) {
+    val logger = hiltViewModel<LoggerViewModel>()
+    val mqtt = hiltViewModel<MqttViewModel>()
     val isRecording = remember { mutableStateOf(false) }
     val rpm = remember { mutableStateOf("-") }
     val gasPosition = remember { mutableStateOf("-") }
@@ -336,7 +334,7 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
     }
 
     fun onDESDataReceived(rliID: Byte, fullData: ByteArray) {
-        LocalLogging().writeLog(context, "DES data received: rliID = $rliID; ${fullData.joinToString(", ")}")
+        logger.writeLog("DES data received: rliID = $rliID; ${fullData.joinToString(", ")}")
 
         val data = ByteArray(5)
         data[0] = ((0x0101 shr 8) and 0xFF).toByte()
@@ -348,75 +346,66 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                 if (fullData[1].toInt() == 0x0101 and 0xFF) {
                     when (rliID) {
                         constants.RLI_ENGINE_SPEED.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_ENGINE_SPEED received")
-                            val resData = extractResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_ENGINE_SPEED data: $resData")
-                            rpm.value = resData.toString()
-                            saveCsvData("RPM", resData.toString())
+                            val value = extractResData(fullData).toString()
+                            logger.writeLog("RLI_ENGINE_SPEED data: $value")
+                            rpm.value = value
+                            saveCsvData("RPM", value)
 
                             nextCommand(constants.RLI_GAS_POSITION, data)
                         }
                         constants.RLI_GAS_POSITION.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_GAS_POSITION received")
-                            val resData = extractResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_GAS_POSITION data: ${resData / 16}")
-                            gasPosition.value = (resData / 16).toString()
-                            saveCsvData("THROTTLE", (resData / 16).toString())
+                            val value = (extractResData(fullData) / 16).toString()
+                            logger.writeLog("RLI_GAS_POSITION data: $value")
+                            gasPosition.value = value
+                            saveCsvData("THROTTLE", value)
 
                             nextCommand(constants.RLI_ACTUATED_SPARK, data)
                         }
                         constants.RLI_ACTUATED_SPARK.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_ACTUATED_SPARK received")
-                            val resData = extractSignedResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_ACTUATED_SPARK data: ${resData / 16}")
-                            actuatedSpark.value = (resData / 16).toString()
-                            saveCsvData("SPARK ADV", (resData / 16).toString())
+                            val value = (extractSignedResData(fullData) / 16).toString()
+                            logger.writeLog("RLI_ACTUATED_SPARK data: $value")
+                            actuatedSpark.value = value
+                            saveCsvData("SPARK ADV", value)
 
                             nextCommand(constants.RLI_COOLANT_TEMP, data)
                         }
                         constants.RLI_COOLANT_TEMP.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_COOLANT_TEMP received")
-                            val resData = extractSignedResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_COOLANT_TEMP data: ${resData / 16}")
-                            engineCoolant.value = (resData / 16).toString()
-                            saveCsvData("ENGINE TEMP", (resData / 16).toString())
+                            val value = (extractSignedResData(fullData) / 16).toString()
+                            logger.writeLog("RLI_COOLANT_TEMP data: $value")
+                            engineCoolant.value = value
+                            saveCsvData("ENGINE TEMP", value)
 
                             nextCommand(constants.RLI_AIR_TEMP, data)
                         }
                         constants.RLI_AIR_TEMP.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_AIR_TEMP received")
-                            val resData = extractSignedResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_AIR_TEMP data: ${resData / 16}")
-                            airTemp.value = (resData / 16).toString()
-                            saveCsvData("AIR TEMP", (resData / 16).toString())
+                            val value = (extractSignedResData(fullData) / 16).toString()
+                            logger.writeLog("RLI_AIR_TEMP data: $value")
+                            airTemp.value = value
+                            saveCsvData("AIR TEMP", value)
 
                             nextCommand(constants.RLI_ATMOSPHERE_PRESSURE, data)
                         }
                         constants.RLI_ATMOSPHERE_PRESSURE.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_ATMOSPHERE_PRESSURE received")
-                            val resData = extractResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_ATMOSPHERE_PRESSURE data: $resData")
-                            atmospherePressure.value = resData.toString()
-                            saveCsvData("ATM PRESSURE", resData.toString())
+                            val value = extractResData(fullData).toString()
+                            logger.writeLog("RLI_ATMOSPHERE_PRESSURE data: $value")
+                            atmospherePressure.value = value
+                            saveCsvData("ATM PRESSURE", value)
 
                             nextCommand(constants.RLI_OPERATING_HOURS, data)
                         }
                         constants.RLI_OPERATING_HOURS.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_OPERATING_HOURS received")
-                            val resData = extractResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_OPERATING_HOURS data: ${resData / 8}")
-                            operatingHours.value = (resData / 8).toString()
-                            saveCsvData("OP. TIME", (resData / 8).toString())
+                            val value = (extractResData(fullData) / 8).toString()
+                            logger.writeLog("RLI_OPERATING_HOURS data: $value")
+                            operatingHours.value = value
+                            saveCsvData("OP. TIME", value)
 
                             nextCommand(constants.RLI_BATTERY_VOLTAGE, data)
                         }
                         constants.RLI_BATTERY_VOLTAGE.toByte() -> {
-                            LocalLogging().writeLog(context, "RLI_BATTERY_VOLTAGE received")
-                            val resData = extractResData(fullData)
-                            LocalLogging().writeLog(context, "RLI_BATTERY_VOLTAGE data: ${resData / 16}")
-
-                            batteryVoltage.value = (resData / 16).toString()
-                            saveCsvData("BATTERY VOLTAGE", (resData / 16).toString())
+                            val value = (extractResData(fullData) / 16).toString()
+                            logger.writeLog("RLI_BATTERY_VOLTAGE data: $value")
+                            batteryVoltage.value = value
+                            saveCsvData("BATTERY VOLTAGE", value)
 
                             val jsonPayload = """
                             {
@@ -430,22 +419,22 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                               "opTime": ${operatingHours.value},
                               "batteryVoltage": ${batteryVoltage.value}
                             }
-                        """.trimIndent()
+                            """.trimIndent()
 
-                            MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
+                            mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
 
                             streamData()
                         }
                         else -> {
-                            LocalLogging().writeLog(context, "Unknown data received. RliId: $rliID; data: $fullData")
+                            logger.writeLog("Unknown data received. RliId: $rliID; data: $fullData")
                         }
                     }
                 }
             } catch (e: ArrayIndexOutOfBoundsException) {
                 Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                LocalLogging().writeLog(context, "Error: ${e.message}")
+                logger.writeLog("Error: ${e.message}")
             } catch (e: Exception) {
-                LocalLogging().writeLog(context, "Error: ${e.message}")
+                logger.writeLog("Error: ${e.message}")
             }
         }
     }
@@ -660,7 +649,7 @@ fun getTuneData(btViewModel: BluetoothViewModel, rliId: Int, isRead: Boolean, wr
 
 @Composable
 fun page2(prefManager: PrefManager, context: Context) {
-
+    val mqtt = hiltViewModel<MqttViewModel>()
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val vin = remember { mutableStateOf("-") }
     val ecuDRW = remember { mutableStateOf("-") }
@@ -711,7 +700,7 @@ fun page2(prefManager: PrefManager, context: Context) {
                               "homolCode": "${homologation.value}"
                             }
                         """.trimIndent()
-                        MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
+                        mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
                     }
                 }
             }
@@ -752,7 +741,7 @@ fun page2(prefManager: PrefManager, context: Context) {
 
 @Composable
 fun page3(prefManager: PrefManager, context: Context) {
-
+    val mqtt = hiltViewModel<MqttViewModel>()
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val adjustmentValue = remember { mutableStateOf(0) }
     val tuneOffset = remember { mutableStateOf(0) }
@@ -781,7 +770,7 @@ fun page3(prefManager: PrefManager, context: Context) {
                             }
                         """.trimIndent()
 
-                        MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/idleadjustment", jsonPayload)
+                        mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/idleadjustment", jsonPayload)
 
                         getTuneData(btViewModel, constants.TUNE_MIN, true, null)
                     }
@@ -953,6 +942,7 @@ fun get4BitsAsHex(byte: Byte, isHigh: Boolean): String {
 
 @Composable
 fun page4(prefManager: PrefManager, context: Context, navController: NavController) {
+    val mqtt = hiltViewModel<MqttViewModel>()
     val btViewModel = hiltViewModel<BluetoothViewModel>()
     val imgEngineOn = remember { mutableStateOf(false) }
 
@@ -1060,7 +1050,7 @@ fun page4(prefManager: PrefManager, context: Context, navController: NavControll
                             }
                         """.trimIndent()
 
-                MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginediagnose", jsonPayload)
+                mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginediagnose", jsonPayload)
 
                 tvTitleData.value = tempData
             }
