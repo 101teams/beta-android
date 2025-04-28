@@ -37,10 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,13 +66,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
-import com.betamotor.app.BuildConfig
 import com.betamotor.app.R
 import com.betamotor.app.data.constants
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
+import com.betamotor.app.presentation.viewmodel.DeviceDetailViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
@@ -80,26 +80,26 @@ import com.betamotor.app.theme.GrayLight
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
-import com.betamotor.app.utils.LocalLogging
 import com.betamotor.app.utils.MqttViewModel
 import com.betamotor.app.utils.PrefManager
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun DetailDeviceScreen(
     navController: NavController
 ) {
-    val viewModel = hiltViewModel<BluetoothViewModel>()
+    val btViewModel = hiltViewModel<BluetoothViewModel>()
+    val deviceViewModel = hiltViewModel<DeviceDetailViewModel>()
 
     val context = LocalContext.current
     val prefManager = PrefManager(context)
 
     val lifecycleOwner = LocalLifecycleOwner.current
     var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
-    viewModel.observeLifecycle(lifecycle = lifecycleOwner.lifecycle)
+    btViewModel.observeLifecycle(lifecycle = lifecycleOwner.lifecycle)
+
+    // Collect states from ViewModel
+    val isStreaming by deviceViewModel.isStreaming.collectAsState()
+    val csvData by deviceViewModel.csvData.collectAsState()
 
     DisposableEffect(lifecycleOwner) {
         val lifecycleObserver = LifecycleEventObserver { _, event ->
@@ -116,7 +116,7 @@ fun DetailDeviceScreen(
     LaunchedEffect(lifecycleEvent) {
         when (lifecycleEvent) {
             Lifecycle.Event.ON_DESTROY -> {//before was on pause
-                viewModel.disconnectDevice()
+                btViewModel.disconnectDevice()
                 navController.popBackStack()
             }
             else -> {}
@@ -131,16 +131,19 @@ fun DetailDeviceScreen(
         painterResource(id = R.drawable.ic_tab4),
     )
 
-    val coroutineScope = rememberCoroutineScope()
-    val tab = remember { mutableStateOf(0) }
     val showDialogExport = remember { mutableStateOf(false) }
-    val csvData: MutableState<MutableList<String>> = remember { mutableStateOf(mutableListOf()) }
-
-    val isStreaming = remember { mutableStateOf(false) }
+    val tab = remember { mutableStateOf(0) }
 
     BackInvokeHandler {
-        viewModel.disconnectDevice()
+        btViewModel.disconnectDevice()
         navController.popBackStack()
+    }
+    
+    // Initially load engine info data
+    LaunchedEffect(Unit) {
+        if (tab.value == 0) {
+            deviceViewModel.fetchEngineInfo()
+        }
     }
 
     Box (
@@ -200,9 +203,17 @@ fun DetailDeviceScreen(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null // Removes ripple effect
                                     ) {
-                                        if (index != 0) {
-                                            isStreaming.value = false
+                                        // On tab change, handle data streaming
+                                        if (index != 1 && isStreaming) {
+                                            // Stop streaming when leaving the data tab
+                                            deviceViewModel.toggleStreaming()
                                         }
+                                        
+                                        // Load engine info when going to that tab
+                                        if (index == 0) {
+                                            deviceViewModel.fetchEngineInfo()
+                                        }
+                                        
                                         tab.value = index
                                     }
                                     .padding(vertical = 8.dp, horizontal = 16.dp),
@@ -226,8 +237,8 @@ fun DetailDeviceScreen(
                     modifier = Modifier.padding(paddingValues),
                 ) {
                     when (tab.value) {
-                        0 -> page2(prefManager, context)
-                        1 -> page1(navController, isStreaming, showDialogExport, csvData, prefManager, context)
+                        0 -> EngineInfoTab(deviceViewModel)
+                        1 -> EngineDataTab(navController, deviceViewModel, showDialogExport)
                         2 -> page3(prefManager, context)
                         3 -> page4(prefManager, context, navController)
                     }
@@ -236,221 +247,79 @@ fun DetailDeviceScreen(
         }
     }
 
-    if (showDialogExport.value && csvData.value.isNotEmpty()) {
-        ExportDialog(openDialog = showDialogExport, context = context, csvData = csvData) {
+    // Show export dialog when needed
+    if (showDialogExport.value && csvData.isNotEmpty()) {
+        val csvDataState: MutableState<MutableList<String>> = remember { mutableStateOf(csvData.toMutableList()) }
+        ExportDialog(openDialog = showDialogExport, context = context, csvData = csvDataState) {
             showDialogExport.value = false
-            csvData.value = mutableListOf()
+            deviceViewModel.clearRecordingData()
         }
     }
 }
 
 @Composable
-fun page1(navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>, prefManager: PrefManager, context: Context) {
-    val logger = LocalLogging(context)
-    val mqtt = hiltViewModel<MqttViewModel>()
-    val isRecording = remember { mutableStateOf(false) }
-    val rpm = remember { mutableStateOf("-") }
-    val gasPosition = remember { mutableStateOf("-") }
-    val actuatedSpark = remember { mutableStateOf("-") }
-    val engineCoolant = remember { mutableStateOf("-") }
-    val airTemp = remember { mutableStateOf("-") }
-    val atmospherePressure = remember { mutableStateOf("-") }
-    val operatingHours = remember { mutableStateOf("-") }
-    val batteryVoltage = remember { mutableStateOf("-") }
+fun EngineInfoTab(viewModel: DeviceDetailViewModel) {
+    // Collect state from the ViewModel
+    val vin by viewModel.vin.collectAsState()
+    val ecuDRW by viewModel.ecuDRW.collectAsState()
+    val ecuHW by viewModel.ecuHW.collectAsState()
+    val ecuSW by viewModel.ecuSW.collectAsState()
+    val calibration by viewModel.calibration.collectAsState()
+    val homologation by viewModel.homologation.collectAsState()
 
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(all = 26.dp)
+            .background(color = Color.Transparent),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(GrayDark)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 28.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("ENGINE INFO", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(24.dp))
+                DetailDataItem(title = "VIN", value = vin, suffix = "")
+                DetailDataItem(title = "ECU DRW", value = ecuDRW, suffix = "")
+                DetailDataItem(title = "ECU HW", value = ecuHW, suffix = "")
+                DetailDataItem(title = "ECU SW.", value = ecuSW, suffix = "")
+                DetailDataItem(title = "CALIBRATION", value = calibration, suffix = "")
+                DetailDataItem(title = "HOMOL. CODE", value = homologation, suffix = "")
+            }
+        }
+    }
+}
+
+@Composable
+fun EngineDataTab(
+    navController: NavController,
+    viewModel: DeviceDetailViewModel,
+    showDialogExport: MutableState<Boolean>
+) {
+    // Collect state from the ViewModel
+    val rpm by viewModel.rpm.collectAsState()
+    val gasPosition by viewModel.gasPosition.collectAsState()
+    val actuatedSpark by viewModel.actuatedSpark.collectAsState()
+    val engineCoolant by viewModel.engineCoolant.collectAsState()
+    val airTemp by viewModel.airTemp.collectAsState()
+    val atmospherePressure by viewModel.atmospherePressure.collectAsState()
+    val operatingHours by viewModel.operatingHours.collectAsState()
+    val batteryVoltage by viewModel.batteryVoltage.collectAsState()
+    val isStreaming by viewModel.isStreaming.collectAsState()
+    val isRecording by viewModel.isRecording.collectAsState()
+    
+    val context = LocalContext.current
+    val prefManager = remember { PrefManager(context) }
     val btViewModel = hiltViewModel<BluetoothViewModel>()
-    val scope = rememberCoroutineScope()
-
-    var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
-
-    LaunchedEffect(Unit) {
-        logger.writeLog("change tab to page 1")
-    }
-
-    LaunchedEffect(lifecycleEvent) {
-        when (lifecycleEvent) {
-            Lifecycle.Event.ON_PAUSE -> {
-                csvData.value = mutableListOf()
-                isStreaming.value = false
-            }
-            else -> {}
-        }
-    }
-
-    fun streamData(){
-        logger.writeLog("fetching ENGINE_SPEED")
-        if (isStreaming.value) {
-
-            val data = ByteArray(5)
-            data[0] = ((0x0101 shr 8) and 0xFF)
-            data[1] = 0x0101 and 0xFF
-            data[2] = 0x02
-            // get data RPM
-            data[3] = ((constants.RLI_ENGINE_SPEED shr 8) and 0xFF).toByte()
-            data[4] = (constants.RLI_ENGINE_SPEED and 0xFF).toByte()
-            btViewModel.sendCommandByteDES(data)
-        }
-    }
-
-    fun saveCsvData(type: String, value: String){
-        Log.d(type, value)
-        if(isRecording.value) {
-            Log.d("write", value)
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            val time = dateFormat.format(Date())
-
-            val tmpCSVData = csvData.value
-            tmpCSVData.add("$time,$type,$value")
-
-            csvData.value = tmpCSVData
-        }
-    }
-
-    fun extractResData(fullData: ByteArray): Int {
-        return when {
-            fullData.size > 7 -> ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-            fullData.size > 6 -> fullData[6].toUByte().toInt()
-            else -> 0
-        }
-    }
-
-    fun extractSignedResData(fullData: ByteArray): Int {
-        return when {
-            fullData.size > 7 -> convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-            fullData.size > 6 -> convertSignedTwosComplement(fullData[6].toInt(), 8)
-            else -> 0
-        }
-    }
-
-    fun nextCommand(nextRliId: Int, data: ByteArray) {
-        data[3] = ((nextRliId shr 8) and 0xFF).toByte()
-        data[4] = (nextRliId and 0xFF).toByte()
-
-        if (isStreaming.value) {
-            Handler(Looper.getMainLooper()).postDelayed({
-                btViewModel.sendCommandByteDES(data)
-            }, 50)
-        }
-    }
-
-    fun onDESDataReceived(rliID: Byte, fullData: ByteArray) {
-        logger.writeLog("DES data received: rliID = $rliID; ${fullData.joinToString(", ")}")
-
-        val data = ByteArray(5)
-        data[0] = ((0x0101 shr 8) and 0xFF).toByte()
-        data[1] = (0x0101 and 0xFF).toByte()
-        data[2] = 0x02
-
-        scope.launch {
-            try {
-                if (fullData[1].toInt() == 0x0101 and 0xFF) {
-                    when (rliID) {
-                        constants.RLI_ENGINE_SPEED.toByte() -> {
-                            val value = extractResData(fullData).toString()
-                            logger.writeLog("RLI_ENGINE_SPEED data: $value")
-                            rpm.value = value
-                            saveCsvData("RPM", value)
-
-                            nextCommand(constants.RLI_GAS_POSITION, data)
-                        }
-                        constants.RLI_GAS_POSITION.toByte() -> {
-                            val value = (extractResData(fullData) / 16).toString()
-                            logger.writeLog("RLI_GAS_POSITION data: $value")
-                            gasPosition.value = value
-                            saveCsvData("THROTTLE", value)
-
-                            nextCommand(constants.RLI_ACTUATED_SPARK, data)
-                        }
-                        constants.RLI_ACTUATED_SPARK.toByte() -> {
-                            val value = (extractSignedResData(fullData) / 16).toString()
-                            logger.writeLog("RLI_ACTUATED_SPARK data: $value")
-                            actuatedSpark.value = value
-                            saveCsvData("SPARK ADV", value)
-
-                            nextCommand(constants.RLI_COOLANT_TEMP, data)
-                        }
-                        constants.RLI_COOLANT_TEMP.toByte() -> {
-                            val value = (extractSignedResData(fullData) / 16).toString()
-                            logger.writeLog("RLI_COOLANT_TEMP data: $value")
-                            engineCoolant.value = value
-                            saveCsvData("ENGINE TEMP", value)
-
-                            nextCommand(constants.RLI_AIR_TEMP, data)
-                        }
-                        constants.RLI_AIR_TEMP.toByte() -> {
-                            val value = (extractSignedResData(fullData) / 16).toString()
-                            logger.writeLog("RLI_AIR_TEMP data: $value")
-                            airTemp.value = value
-                            saveCsvData("AIR TEMP", value)
-
-                            nextCommand(constants.RLI_ATMOSPHERE_PRESSURE, data)
-                        }
-                        constants.RLI_ATMOSPHERE_PRESSURE.toByte() -> {
-                            val value = extractResData(fullData).toString()
-                            logger.writeLog("RLI_ATMOSPHERE_PRESSURE data: $value")
-                            atmospherePressure.value = value
-                            saveCsvData("ATM PRESSURE", value)
-
-                            nextCommand(constants.RLI_OPERATING_HOURS, data)
-                        }
-                        constants.RLI_OPERATING_HOURS.toByte() -> {
-                            val value = (extractResData(fullData) / 8).toString()
-                            logger.writeLog("RLI_OPERATING_HOURS data: $value")
-                            operatingHours.value = value
-                            saveCsvData("OP. TIME", value)
-
-                            nextCommand(constants.RLI_BATTERY_VOLTAGE, data)
-                        }
-                        constants.RLI_BATTERY_VOLTAGE.toByte() -> {
-                            val value = (extractResData(fullData) / 16).toString()
-                            logger.writeLog("RLI_BATTERY_VOLTAGE data: $value")
-                            batteryVoltage.value = value
-                            saveCsvData("BATTERY VOLTAGE", value)
-
-                            val jsonPayload = """
-                            {
-                              "vin": "${prefManager.getMotorcycleVIN()}",
-                              "rpm": ${rpm.value},
-                              "throttle": ${gasPosition.value},
-                              "sparkAdv": ${actuatedSpark.value},
-                              "engineTemp": ${engineCoolant.value},
-                              "airTemp": ${airTemp.value},
-                              "atmPressure": ${atmospherePressure.value},
-                              "opTime": ${operatingHours.value},
-                              "batteryVoltage": ${batteryVoltage.value}
-                            }
-                            """.trimIndent()
-
-                            mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
-
-                            streamData()
-                        }
-                        else -> {
-                            logger.writeLog("Unknown data received. RliId: $rliID; data: $fullData")
-                        }
-                    }
-                }
-            } catch (e: ArrayIndexOutOfBoundsException) {
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                logger.writeLog("Error: ${e.message}")
-            } catch (e: Exception) {
-                logger.writeLog("Error: ${e.message}")
-            }
-        }
-    }
-
-    LaunchedEffect(key1 = Unit) {
-        if (!BuildConfig.DEBUG) {
-            return@LaunchedEffect
-        }
-
-        val fullData = byteArrayOf(
-            0x01, 0x01, 0x00, 0x02, 0x00, 0x01, 0x66
-        )
-        val rliID = fullData[5]
-        onDESDataReceived(rliID, fullData)
-    }
-
+    
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -473,14 +342,14 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                 ) {
                     Text("ENGINE DATA", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(24.dp))
-                    DetailDataItem(title = "RPM", value = rpm.value, suffix = "rpm")
-                    DetailDataItem(title = "THROTTLE", value = gasPosition.value, suffix = "%")
-                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark.value, suffix = "°")
-                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant.value, suffix = "°C")
-                    DetailDataItem(title = "AIR TEMP.", value = airTemp.value, suffix = "°C")
-                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure.value, suffix = "Mbar")
-                    DetailDataItem(title = "OP. TIME", value = operatingHours.value, suffix = "h")
-                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage.value, suffix = "V")
+                    DetailDataItem(title = "RPM", value = rpm, suffix = "rpm")
+                    DetailDataItem(title = "THROTTLE", value = gasPosition, suffix = "%")
+                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark, suffix = "°")
+                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant, suffix = "°C")
+                    DetailDataItem(title = "AIR TEMP.", value = airTemp, suffix = "°C")
+                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure, suffix = "Mbar")
+                    DetailDataItem(title = "OP. TIME", value = operatingHours, suffix = "h")
+                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage, suffix = "V")
                 }
             }
 
@@ -523,29 +392,21 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            isStreaming.value = !isStreaming.value
-
-                            btViewModel.setOnReadDataDESCalback(onDataReceived = {rliID, fullData ->
-                                onDESDataReceived(rliID, fullData)
-                            })
-
-                            if (isStreaming.value) {
-                                streamData()
-                            }
+                            viewModel.toggleStreaming()
                         }
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Image(
-                                bitmap = ImageBitmap.imageResource( if (isStreaming.value) R.drawable.ic_stop_red else R.drawable.ic_play_white),
+                                bitmap = ImageBitmap.imageResource( if (isStreaming) R.drawable.ic_stop_red else R.drawable.ic_play_white),
                                 contentDescription = "",
                                 modifier = Modifier
                                     .height(52.dp)
                                     .width(52.dp),
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(if (isStreaming.value) "Streaming" else "Start Stream", style = MaterialTheme.typography.button)
+                            Text(if (isStreaming) "Streaming" else "Start Stream", style = MaterialTheme.typography.button)
                         }
                     }
 
@@ -554,14 +415,14 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            if (!isStreaming.value) {
+                            if (!isStreaming) {
                                 Toast.makeText(context, "Please start streaming first", Toast.LENGTH_SHORT).show()
                                 return@clickable
                             }
 
-                            isRecording.value = !isRecording.value
+                            viewModel.toggleRecording()
 
-                            if (!isRecording.value) {
+                            if (!isRecording) {
                                 showDialogExport.value = true
                             }
                         }
@@ -570,202 +431,20 @@ fun page1(navController: NavController, isStreaming: MutableState<Boolean>, show
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Image(
-                                bitmap = ImageBitmap.imageResource( if (isRecording.value) R.drawable.ic_stop_record else R.drawable.ic_start_record),
+                                bitmap = ImageBitmap.imageResource( if (isRecording) R.drawable.ic_stop_record else R.drawable.ic_start_record),
                                 contentDescription = "",
                                 modifier = Modifier
                                     .height(52.dp)
                                     .width(52.dp),
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(if (isRecording.value) "Recording" else "Start Record", style = MaterialTheme.typography.button)
+                            Text(if (isRecording) "Recording" else "Start Record", style = MaterialTheme.typography.button)
                         }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-fun convertSignedTwosComplement(value: Int, bitSize: Int): Int {
-    val maxValue = (1 shl (bitSize - 1))
-    return if (value >= maxValue) {
-        value - (1 shl bitSize)
-    } else {
-        value
-    }
-}
-
-fun convertVINData(fullData: ByteArray): String {
-    var value = ""
-
-    val length = fullData[3].toInt() - 2
-
-    for(i in 6..6+(length-1)) {
-        value += fullData[i].toInt().toChar()
-    }
-
-    return value
-}
-
-fun getVINData(btViewModel: BluetoothViewModel, rliId: Int) {
-    val data = ByteArray(5)
-    data[0] = ((0x0301 shr 8) and 0xFF)
-    data[1] = 0x0301 and 0xFF
-    data[2] = 0x02
-
-    data[3] = ((rliId shr 8) and 0xFF).toByte()
-    data[4] = (rliId and 0xFF).toByte()
-
-    Handler(Looper.getMainLooper()).postDelayed({
-        btViewModel.sendCommandByteDES(data)
-    },50)
-}
-
-fun getTuneData(btViewModel: BluetoothViewModel, rliId: Int, isRead: Boolean, writeData: Int?) {
-    val data = ByteArray(if(isRead) 5 else 7)
-    if (isRead) {
-        data[0] = ((0x0101 shr 8) and 0xFF) //read 0x0101 write 0x0102
-        data[1] = 0x0101 and 0xFF //read 0x0101 write 0x0102
-    } else {
-        data[0] = ((0x0102 shr 8) and 0xFF)
-        data[1] = 0x0102 and 0xFF
-    }
-    data[2] = 0x02
-
-    data[3] = ((rliId shr 8) and 0xFF).toByte()
-    data[4] = (rliId and 0xFF).toByte()
-
-    if (!isRead && writeData != null) {
-        data[5] = ((writeData shr 8) and 0xFF).toByte()
-        data[6] = (writeData and 0xFF).toByte()
-    }
-
-    Handler(Looper.getMainLooper()).postDelayed({
-        btViewModel.sendCommandByteDES(data)
-    },50)
-}
-
-@Composable
-fun page2(prefManager: PrefManager, context: Context) {
-    val mqtt = hiltViewModel<MqttViewModel>()
-    val logger = LocalLogging(context)
-    val btViewModel = hiltViewModel<BluetoothViewModel>()
-    val vin = remember { mutableStateOf("-") }
-    val ecuDRW = remember { mutableStateOf("-") }
-    val ecuHW = remember { mutableStateOf("-") }
-    val ecuSW = remember { mutableStateOf("-") }
-    val calibration = remember { mutableStateOf("-") }
-    val homologation = remember { mutableStateOf("-") }
-
-    LaunchedEffect(Unit) {
-        logger.writeLog("change tab to page 2")
-    }
-
-    fun onDataReceived(rliID: Byte, fullData: ByteArray) {
-
-        if (fullData[1].toInt() == 0x0301 and 0xFF) {
-            when (rliID) {
-                constants.ECU_VIN.toByte() -> {
-                    val newVal = convertVINData(fullData)
-                    vin.value = newVal
-                    prefManager.setMotorcycleVIN(vin.value)
-
-                    logger.writeLog("ECU_VIN: $newVal => ${vin.value}. fetching ECU_DRAWING_NUMBER")
-                    getVINData(btViewModel, constants.ECU_DRAWING_NUMBER)
-                }
-                constants.ECU_DRAWING_NUMBER.toByte() -> {
-                    val newVal = convertVINData(fullData)
-                    ecuDRW.value = newVal
-
-                    logger.writeLog("ECU_DRAWING_NUMBER: $newVal => ${ecuDRW.value}. fetching ECU_HW_NUMBER")
-                    getVINData(btViewModel, constants.ECU_HW_NUMBER)
-                }
-                constants.ECU_HW_NUMBER.toByte() -> {
-                    val newVal = convertVINData(fullData)
-                    ecuHW.value = newVal
-
-                    logger.writeLog("ECU_HW_NUMBER: $newVal => ${ecuHW.value}. fetching ECU_SW_NUMBER")
-                    getVINData(btViewModel, constants.ECU_SW_NUMBER)
-                }
-                constants.ECU_SW_NUMBER.toByte() -> {
-                    val newVal = convertVINData(fullData)
-                    ecuSW.value = newVal
-
-                    logger.writeLog("ECU_SW_NUMBER: $newVal => ${ecuSW.value}. fetching ECU_SW_VERSION")
-                    getVINData(btViewModel, constants.ECU_SW_VERSION)
-                }
-                constants.ECU_SW_VERSION.toByte() -> {
-                    val newVal = convertVINData(fullData)
-                    calibration.value = newVal
-
-                    logger.writeLog("ECU_SW_VERSION: $newVal => ${calibration.value}. fetching ECU_HOMOLOGATION")
-                    getVINData(btViewModel, constants.ECU_HOMOLOGATION)
-                }
-                constants.ECU_HOMOLOGATION.toByte() -> {
-                    val newVal = convertVINData(fullData)
-                    homologation.value = newVal
-                    logger.writeLog("ECU_HOMOLOGATION $newVal =>: ${homologation.value}")
-
-                    val jsonPayload = """
-                            {
-                              "vin": "${vin.value}",
-                              "ecuDrw": "${ecuDRW.value}",
-                              "ecuHw": "${ecuHW.value}",
-                              "ecuSw": "${ecuSW.value}",
-                              "calibration": "${calibration.value}",
-                              "homolCode": "${homologation.value}"
-                            }
-                        """.trimIndent()
-                    mqtt.publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
-                }
-            }
-        }
-    }
-
-
-    LaunchedEffect(Unit) {
-        btViewModel.setOnReadDataDESCalback(onDataReceived = {rliID, fullData -> onDataReceived(rliID, fullData) })
-
-        logger.writeLog("fetching ECU_VIN")
-        getVINData(btViewModel, constants.ECU_VIN)
-
-        if (BuildConfig.DEBUG) { // for testing purpose
-            val info = byteArrayOf(
-                0x03, 0x01, 0x00, 0x0D, 0x00, 0x03, 0x48, 0x30, 0x34, 0x35, 0x36, 0x34, 0x30, 0x30, 0x20, 0x20, 0x20
-            )
-
-            onDataReceived(info[5], info)
-        }
-    }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(all = 26.dp)
-            .background(color = Color.Transparent),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(GrayDark)
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 28.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("ENGINE INFO", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.height(24.dp))
-                DetailDataItem(title = "VIN", value = vin.value, suffix = "")
-                DetailDataItem(title = "ECU DRW", value = ecuDRW.value, suffix = "")
-                DetailDataItem(title = "ECU HW", value = ecuHW.value, suffix = "")
-                DetailDataItem(title = "ECU SW.", value = ecuSW.value, suffix = "")
-                DetailDataItem(title = "CALIBRATION", value = calibration.value, suffix = "")
-                DetailDataItem(title = "HOMOL. CODE", value = homologation.value, suffix = "")
-            }
         }
     }
 }
@@ -950,6 +629,30 @@ fun page3(prefManager: PrefManager, context: Context) {
     }
 }
 
+fun getTuneData(btViewModel: BluetoothViewModel, rliId: Int, isRead: Boolean, writeData: Int?) {
+    val data = ByteArray(if(isRead) 5 else 7)
+    if (isRead) {
+        data[0] = ((0x0101 shr 8) and 0xFF) //read 0x0101 write 0x0102
+        data[1] = 0x0101 and 0xFF //read 0x0101 write 0x0102
+    } else {
+        data[0] = ((0x0102 shr 8) and 0xFF)
+        data[1] = 0x0102 and 0xFF
+    }
+    data[2] = 0x02
+
+    data[3] = ((rliId shr 8) and 0xFF).toByte()
+    data[4] = (rliId and 0xFF).toByte()
+
+    if (!isRead && writeData != null) {
+        data[5] = ((writeData shr 8) and 0xFF).toByte()
+        data[6] = (writeData and 0xFF).toByte()
+    }
+
+    Handler(Looper.getMainLooper()).postDelayed({
+        btViewModel.sendCommandByteDES(data)
+    },50)
+}
+
 fun getDiagData(btViewModel: BluetoothViewModel) {
     val data = ByteArray(3)
     data[0] = 0x00
@@ -1127,7 +830,6 @@ fun page4(prefManager: PrefManager, context: Context, navController: NavControll
                         DetailDataItem(title = it.first, value = it.second, suffix = "")
                     }
                 }
-//                DetailDataItem(title = tvTitle.value, value = tvData.value, suffix = "")
             }
         }
     }
@@ -1169,5 +871,14 @@ fun DetailDataItem(
                 Text(suffix, style = MaterialTheme.typography.body2, fontWeight = FontWeight.Thin)
             }
         }
+    }
+}
+
+fun convertSignedTwosComplement(value: Int, bitSize: Int): Int {
+    val maxValue = (1 shl (bitSize - 1))
+    return if (value >= maxValue) {
+        value - (1 shl bitSize)
+    } else {
+        value
     }
 }
