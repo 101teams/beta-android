@@ -43,6 +43,7 @@ class PrefManager(
         return getData("selected_motorcycle_id", "")
     }
 
+    // for now, use mac address for vin.
     fun setMotorcycleVIN(vin: String) {
         saveData("motorcycle_vin", vin)
     }

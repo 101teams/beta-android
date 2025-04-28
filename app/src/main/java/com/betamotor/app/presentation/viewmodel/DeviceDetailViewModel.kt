@@ -424,7 +424,7 @@ class DeviceDetailViewModel @Inject constructor(
                 constants.ECU_VIN.toByte() -> {
                     val newVal = convertVINData(fullData)
                     _vin.value = newVal
-                    prefManager.setMotorcycleVIN(_vin.value)
+//                    prefManager.setMotorcycleVIN(_vin.value)
                     logger.writeLog("ECU_VIN: $newVal => ${_vin.value}")
                     processNextEngineInfoCommand(constants.ECU_VIN)
                 }

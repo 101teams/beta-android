@@ -28,6 +28,7 @@ import com.betamotor.app.data.bluetooth.FoundDeviceReceiver
 import com.betamotor.app.data.bluetooth.toBluetoothDeviceDomain
 import com.betamotor.app.utils.LocalLogging
 import com.betamotor.app.utils.MQTTHelper
+import com.betamotor.app.utils.PrefManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +48,7 @@ class AndroidBluetoothController(
     private val mqttHelper: MQTTHelper
 ) : BluetoothController {
     private val logger = LocalLogging(context)
+    private val prefManager = PrefManager(context)
     private val deviceNameFilter = if (BuildConfig.DEBUG) "" else "Beta"
     private val SCSUuid = UUID.fromString("b6ff6ee9-90bf-4f16-8f83-922db0431472")
     private val SCScharUuidWx = UUID.fromString("4c069b22-5a1b-4d8f-a3f1-84fe8b9d901c") // write
@@ -680,6 +682,10 @@ class AndroidBluetoothController(
             clearServicesCache()
 
             fun connectDeviceCallback(isSuccess: Boolean, message: String) {
+                if (isSuccess) {
+                    prefManager.setMotorcycleVIN(device.macAddress)
+                }
+
                 callback(isSuccess, message)
             }
 
