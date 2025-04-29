@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
@@ -78,7 +79,8 @@ fun MyMotorcycleScreen(
     val myMotorcycles = viewModel.motorcycles.collectAsState()
     val prefManager = PrefManager(context)
     val isConnecting = remember { mutableStateOf(false) }
-    val selectedMacAddress = remember { mutableStateOf<String?>(null) }
+    val selectedDevice = remember { mutableStateOf<MotorcycleItem?>(null) }
+    val btState by bluetoothViewModel.state.collectAsState()
 
     var checkedPermission by remember { mutableStateOf(false) }
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(
@@ -110,6 +112,20 @@ fun MyMotorcycleScreen(
             checkedPermission = true
             showPermissionDialog = true
         })
+    }
+
+    LaunchedEffect(btState.isConnectionAuthorized) {
+        // currently connecting to device
+        if (!btState.isConnectionAuthorized) {
+            return@LaunchedEffect
+        }
+
+        if (selectedDevice.value?.deviceId == null) {
+            return@LaunchedEffect
+        }
+
+        prefManager.setSelectedMotorcycleId(selectedDevice.value!!.deviceId)
+        navController.navigate(Screen.DetailDevice.route)
     }
 
     Box (
@@ -208,7 +224,7 @@ fun MyMotorcycleScreen(
                                     }
 
                                     isConnecting.value = true
-                                    selectedMacAddress.value = it.macAddress
+                                    selectedDevice.value = it
                                     bluetoothViewModel.connectDevice(
                                         BluetoothDevice(
                                             "",
@@ -218,8 +234,7 @@ fun MyMotorcycleScreen(
                                         "",
                                         callback = { success, message ->
                                             if (success) {
-                                                prefManager.setSelectedMotorcycleId(it.deviceId)
-                                                navController.navigate(Screen.DetailDevice.route)
+                                                return@connectDevice
                                             } else {
                                                 context
                                                     .findActivity()
@@ -235,7 +250,7 @@ fun MyMotorcycleScreen(
                                             }
 
                                             isConnecting.value = false
-                                            selectedMacAddress.value = null
+                                            selectedDevice.value = null
                                         },
                                         onDataReceived = {}
                                     )
@@ -247,7 +262,7 @@ fun MyMotorcycleScreen(
                                 Text(it.motorcycleType?.name ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
                             }
 
-                            if (isConnecting.value && selectedMacAddress.value == it.macAddress) {
+                            if (isConnecting.value && selectedDevice.value?.macAddress == it.macAddress) {
                                 LoadingIndicator()
                             } else {
                                 Text(it.deviceId, style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)

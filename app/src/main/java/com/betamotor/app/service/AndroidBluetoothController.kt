@@ -331,6 +331,109 @@ class AndroidBluetoothController(
             }
         }
 
+        fun onSecurityAccessValidation(data: ByteArray) {
+            logByteArray("onDataReadReceivedByte SEED", data)
+
+            val udata = UByteArray(14) { 0u } // Create an unsigned byte array of size 14 initialized with zeros
+
+            // Dummy packet from device to central
+            udata[0] = data[0].toUByte()
+            udata[1] = data[1].toUByte()
+            udata[2] = data[2].toUByte()
+            udata[3] = data[3].toUByte()
+            udata[4] = data[4].toUByte()
+
+            // Packet sessionRXudata00
+            // Seed value from 32 - 63 bit
+            udata[5] = data[5].toUByte()
+            udata[6] = data[6].toUByte()
+            udata[7] = data[7].toUByte()
+            udata[8] = data[8].toUByte()
+
+            // Packet sessionRXudata00
+            // Seed value from 0 - 31 bit
+            udata[9] = data[9].toUByte()
+            udata[10] = data[10].toUByte()
+            udata[11] = data[11].toUByte()
+            udata[12] = data[12].toUByte()
+
+            udata[13] = data[13].toUByte()
+
+            val seed = UIntArray(2)
+            seed[0] = (udata[9].toUInt() shl 24) or
+                    (udata[10].toUInt() shl 16) or
+                    (udata[11].toUInt() shl 8) or
+                    udata[12].toUInt()
+
+            seed[1] = (udata[5].toUInt() shl 24) or
+                    (udata[6].toUInt() shl 16) or
+                    (udata[7].toUInt() shl 8) or
+                    udata[8].toUInt()
+
+            // Kunci xTEA 128-bit
+            val key = uintArrayOf(
+                0x74966834u, 0x88aa497fu, 0xb02f4931u, 0x9a353d19u
+            )
+
+            logger.writeLog("Convert to unsigned int data from device => ${udata.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+            logger.writeLog("Seed value (from converted packet) => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
+
+            encipher(32u, seed, key)
+
+            logger.writeLog("Encipher result => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
+
+            val packetWrite = UByteArray(14) { 0u }
+            packetWrite[0] = 0x01u
+            packetWrite[1] = 0x02u
+            packetWrite[2] = 0x03u
+            packetWrite[3] = 0x04u
+            packetWrite[4] = 0xA1u // Authorization Command Request
+
+            // SessionTxData00 - Key from 32 - 63 bit
+            packetWrite[5] = (seed[1] shr 24).toUByte()
+            packetWrite[6] = (seed[1] shr 16).toUByte()
+            packetWrite[7] = (seed[1] shr 8).toUByte()
+            packetWrite[8] = (seed[1] and 0xFFu).toUByte()
+
+            // SessionTxData01 - Key from 0 - 31 bit
+            packetWrite[9] = (seed[0] shr 24).toUByte()
+            packetWrite[10] = (seed[0] shr 16).toUByte()
+            packetWrite[11] = (seed[0] shr 8).toUByte()
+            packetWrite[12] = (seed[0] and 0xFFu).toUByte()
+
+            packetWrite[13] = 0xFAu // Dummy CRC
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                sendCommandByteSCS(prepareDataPacket(1L,
+                    packetWrite[4].toByte(),
+                    byteArrayOf(
+                        packetWrite[5].toByte(),
+                        packetWrite[6].toByte(),
+                        packetWrite[7].toByte(),
+                        packetWrite[8].toByte()
+                    ),
+                    byteArrayOf(packetWrite[9].toByte(),
+                        packetWrite[10].toByte(),
+                        packetWrite[11].toByte(),
+                        packetWrite[12].toByte()
+                    )
+                ))
+
+                // if first received data is available then connection is authorized.
+                if (!isConnectionAuthorized.value) {
+                    _isConnectionAuthorized.value = true
+                    cancelTimer()
+                }
+            }, 100)
+
+            timeoutCallback(true, "success")
+        }
+
+        fun onActiveAccessGranted(data: ByteArray) {
+            _isConnectionAuthorized.value = true
+            cancelTimer()
+        }
+
         // use reusable function call for handling change event because of different supported version above
         fun onDataReadReceived(data: ByteArray, fromUUID: UUID) {
             logger.writeLog("Read Data From => $fromUUID")
@@ -338,104 +441,19 @@ class AndroidBluetoothController(
             mqttHelper.publishMessage("BetaDebug", "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
 
             if (fromUUID == SCScharUuidRx) {
-                if (data.size >= 12) {
-                    if (data[4] == 0x01.toByte()) {
-                        logByteArray("onDataReadReceivedByte SEED", data)
+                if (data.size < 12) {
+                    return
+                }
 
-                        val udata = UByteArray(14) { 0u } // Create an unsigned byte array of size 14 initialized with zeros
-
-                        // Dummy packet from device to central
-                        udata[0] = data[0].toUByte()
-                        udata[1] = data[1].toUByte()
-                        udata[2] = data[2].toUByte()
-                        udata[3] = data[3].toUByte()
-                        udata[4] = data[4].toUByte()
-
-                        // Packet sessionRXudata00
-                        // Seed value from 32 - 63 bit
-                        udata[5] = data[5].toUByte()
-                        udata[6] = data[6].toUByte()
-                        udata[7] = data[7].toUByte()
-                        udata[8] = data[8].toUByte()
-
-                        // Packet sessionRXudata00
-                        // Seed value from 0 - 31 bit
-                        udata[9] = data[9].toUByte()
-                        udata[10] = data[10].toUByte()
-                        udata[11] = data[11].toUByte()
-                        udata[12] = data[12].toUByte()
-
-                        udata[13] = data[13].toUByte()
-
-                        val seed = UIntArray(2)
-                        seed[0] = (udata[9].toUInt() shl 24) or
-                                (udata[10].toUInt() shl 16) or
-                                (udata[11].toUInt() shl 8) or
-                                udata[12].toUInt()
-
-                        seed[1] = (udata[5].toUInt() shl 24) or
-                                (udata[6].toUInt() shl 16) or
-                                (udata[7].toUInt() shl 8) or
-                                udata[8].toUInt()
-
-                        // Kunci xTEA 128-bit
-                        val key = uintArrayOf(
-                            0x74966834u, 0x88aa497fu, 0xb02f4931u, 0x9a353d19u
-                        )
-
-                        logger.writeLog("Convert to unsigned int data from device => ${udata.joinToString(" ") { String.format("%02X", it.toInt()) }}")
-                        logger.writeLog("Seed value (from converted packet) => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
-
-                        encipher(32u, seed, key)
-
-                        logger.writeLog("Encipher result => ${String.format("%08X", seed[0].toInt())} ${String.format("%08X", seed[1].toInt())}")
-
-                        val packetWrite = UByteArray(14) { 0u }
-                        packetWrite[0] = 0x01u
-                        packetWrite[1] = 0x02u
-                        packetWrite[2] = 0x03u
-                        packetWrite[3] = 0x04u
-                        packetWrite[4] = 0xA1u // Authorization Command Request
-
-                        // SessionTxData00 - Key from 32 - 63 bit
-                        packetWrite[5] = (seed[1] shr 24).toUByte()
-                        packetWrite[6] = (seed[1] shr 16).toUByte()
-                        packetWrite[7] = (seed[1] shr 8).toUByte()
-                        packetWrite[8] = (seed[1] and 0xFFu).toUByte()
-
-                        // SessionTxData01 - Key from 0 - 31 bit
-                        packetWrite[9] = (seed[0] shr 24).toUByte()
-                        packetWrite[10] = (seed[0] shr 16).toUByte()
-                        packetWrite[11] = (seed[0] shr 8).toUByte()
-                        packetWrite[12] = (seed[0] and 0xFFu).toUByte()
-
-                        packetWrite[13] = 0xFAu // Dummy CRC
-
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            sendCommandByteSCS(prepareDataPacket(1L,
-                                packetWrite[4].toByte(),
-                                byteArrayOf(
-                                    packetWrite[5].toByte(),
-                                    packetWrite[6].toByte(),
-                                    packetWrite[7].toByte(),
-                                    packetWrite[8].toByte()
-                                ),
-                                byteArrayOf(packetWrite[9].toByte(),
-                                    packetWrite[10].toByte(),
-                                    packetWrite[11].toByte(),
-                                    packetWrite[12].toByte()
-                                )
-                            ))
-
-                            // if first received data is available then connection is authorized.
-                            if (!isConnectionAuthorized.value) {
-                                _isConnectionAuthorized.value = true
-                                cancelTimer()
-                            }
-                        }, 100)
-
-                        timeoutCallback(true, "success")
-                    }
+                val sessionStatus = SessionStatus.fromCode(data[4])
+                when (sessionStatus) {
+                    SessionStatus.HANDSHAKING -> return
+                    SessionStatus.NO_SESSION_ACTIVE -> return
+                    SessionStatus.SECURITY_ACCESS_VALIDATION -> onSecurityAccessValidation(data)
+                    SessionStatus.ACTIVE_ACCESS_GRANTED -> onActiveAccessGranted(data)
+                    SessionStatus.INACTIVE_ACCESS_DENIED -> return
+                    SessionStatus.INACTIVE_ACCESS_DENIED_DEVICE_LOCKED -> return
+                    null -> return
                 }
             } else if (fromUUID == DEScharUuidRx) {
                 if (data.size >= 6) {
@@ -910,5 +928,18 @@ class PairingRequestReceiver (
                 }
             }
         }
+    }
+}
+
+enum class SessionStatus(val code: Byte) {
+    HANDSHAKING(0xFE.toByte()),
+    NO_SESSION_ACTIVE(0x00.toByte()),
+    SECURITY_ACCESS_VALIDATION(0x01.toByte()),
+    ACTIVE_ACCESS_GRANTED(0x02.toByte()),
+    INACTIVE_ACCESS_DENIED(0x03.toByte()),
+    INACTIVE_ACCESS_DENIED_DEVICE_LOCKED(0x04.toByte());
+
+    companion object {
+        fun fromCode(code: Byte): SessionStatus? = entries.find { it.code == code }
     }
 }
