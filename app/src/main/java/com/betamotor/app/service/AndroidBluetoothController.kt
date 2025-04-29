@@ -125,9 +125,6 @@ class AndroidBluetoothController(
         when(bondState) {
             BluetoothDevice.BOND_BONDED -> {
                 Log.d("helow", "device bonded")
-                _isConnectionAuthorized.value = true
-                cancelTimer()
-                timeoutCallback(true, "")
             }
 
             BluetoothDevice.BOND_BONDING -> {
@@ -298,6 +295,13 @@ class AndroidBluetoothController(
                 val gattServices: List<BluetoothGattService> =
                     gatt?.services?.toList() ?: emptyList()
                 logger.writeLog("Services count => ${gattServices.size}")
+
+                if (BuildConfig.DEBUG) {
+                    val emptyByteArray = ByteArray(0)
+                    onActiveAccessGranted(emptyByteArray)
+                    return
+                }
+
                 for (gattService in gattServices) {
                     setServiceAndChars(gattService)
                 }
@@ -332,6 +336,7 @@ class AndroidBluetoothController(
         }
 
         fun onSecurityAccessValidation(data: ByteArray) {
+            logger.writeLog("onSecurityAccessValidation triggered")
             logByteArray("onDataReadReceivedByte SEED", data)
 
             val udata = UByteArray(14) { 0u } // Create an unsigned byte array of size 14 initialized with zeros
@@ -430,29 +435,44 @@ class AndroidBluetoothController(
         }
 
         fun onActiveAccessGranted(data: ByteArray) {
+            logger.writeLog("onActiveAccessGranted triggered")
             _isConnectionAuthorized.value = true
             cancelTimer()
         }
 
+        fun getServiceName(uuid: UUID): String {
+            return when (uuid) {
+                SCSUuid -> return "SCS"
+                SCScharUuidRx -> return "SCS RX"
+                SCScharUuidWx -> return "SCS WX"
+                DESUuid -> return "DES"
+                DEScharUuidRx -> return "DES RX"
+                DEScharUuidWx -> return "DES WX"
+                else -> "Unknown Service => $uuid"
+            }
+        }
+
         // use reusable function call for handling change event because of different supported version above
         fun onDataReadReceived(data: ByteArray, fromUUID: UUID) {
-            logger.writeLog("Read Data From => $fromUUID")
-            logger.writeLog("Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
-            mqttHelper.publishMessage("BetaDebug", "Read Data Received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}")
+            val log = "Source: ${getServiceName(fromUUID)}. Data received => ${data.joinToString(" ") { String.format("%02X", it.toInt()) }}"
+            logger.writeLog(log)
+            mqttHelper.publishMessage("BetaDebug", log)
+
 
             if (fromUUID == SCScharUuidRx) {
                 if (data.size < 12) {
+                    logger.writeLog("Read Data SCS failed, data length < 12")
                     return
                 }
 
                 val sessionStatus = SessionStatus.fromCode(data[4])
                 when (sessionStatus) {
-                    SessionStatus.HANDSHAKING -> return
-                    SessionStatus.NO_SESSION_ACTIVE -> return
+                    SessionStatus.HANDSHAKING -> logger.writeLog("Session Status HANDSHAKING")
+                    SessionStatus.NO_SESSION_ACTIVE -> logger.writeLog("Session Status NO_SESSION_ACTIVE")
                     SessionStatus.SECURITY_ACCESS_VALIDATION -> onSecurityAccessValidation(data)
                     SessionStatus.ACTIVE_ACCESS_GRANTED -> onActiveAccessGranted(data)
-                    SessionStatus.INACTIVE_ACCESS_DENIED -> return
-                    SessionStatus.INACTIVE_ACCESS_DENIED_DEVICE_LOCKED -> return
+                    SessionStatus.INACTIVE_ACCESS_DENIED -> logger.writeLog("Session Status INACTIVE_ACCESS_DENIED")
+                    SessionStatus.INACTIVE_ACCESS_DENIED_DEVICE_LOCKED -> logger.writeLog("Session Status INACTIVE_ACCESS_DENIED_DEVICE_LOCKED")
                     null -> return
                 }
             } else if (fromUUID == DEScharUuidRx) {
