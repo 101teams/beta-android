@@ -37,6 +37,7 @@ import java.lang.reflect.Method
 import java.nio.ByteBuffer
 import java.util.Timer
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.schedule
 import kotlin.concurrent.timerTask
 import kotlin.experimental.and
@@ -72,7 +73,7 @@ class AndroidBluetoothController(
     private var timer: Timer? = null
     private var timeoutCallback: (Boolean, String) -> Unit = { _: Boolean, _: String -> }
 
-    private var onDataReceivedCallback: (Byte, ByteArray) -> Unit = { _: Byte, _: ByteArray -> }
+    private val dataReceivedCallbacks = ConcurrentHashMap<String, (Byte, ByteArray) -> Unit>()
 
     private var currentlyRunningCommand: String? = null
     private val maxRetry = 3
@@ -544,7 +545,7 @@ class AndroidBluetoothController(
             } else if (fromUUID == DEScharUuidRx) {
                 if (data.size >= 6) {
                     logger.writeLog("Read Data DES Success, send callback to ui")
-                    onDataReceivedCallback(data[5], data)
+                    dataReceivedCallbacks.values.forEach { it(data[5], data) }
                 } else {
                     logger.writeLog("Read Data DES failed, data length < 6")
                     Toast.makeText(
@@ -553,7 +554,7 @@ class AndroidBluetoothController(
                     ).show()
                 }
             } else if (fromUUID == DEScharUuidRxLive) {
-                onDataReceivedCallback(data[5], data)
+                dataReceivedCallbacks.values.forEach { it(data[5], data) }
             }
         }
 
@@ -583,8 +584,17 @@ class AndroidBluetoothController(
         }
     }
 
-    override fun onReadDataDES(onDataReceived: (Byte, ByteArray) -> Unit) {
-        this.onDataReceivedCallback = onDataReceived
+    override fun hasCallback(key: String): Boolean {
+        return dataReceivedCallbacks.containsKey(key)
+    }
+
+    override fun addOnDataReceivedCallback(key: String, callback: (Byte, ByteArray) -> Unit) {
+        dataReceivedCallbacks[key] = callback
+        // Additional implementation details for registering with actual Bluetooth service
+    }
+
+    override fun removeOnDataReceivedCallback(key: String) {
+        dataReceivedCallbacks.remove(key)
     }
 
     init {

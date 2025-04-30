@@ -33,9 +33,9 @@ interface BluetoothController {
     fun sendCommand(command: String)
     fun sendCommandByteSCS(command: ByteArray)
     fun sendCommandByteDES(command: ByteArray)
-    fun onReadDataDES(
-        onDataReceived: (Byte, ByteArray) -> Unit
-    )
+    fun hasCallback(key: String): Boolean
+    fun addOnDataReceivedCallback(key: String, callback: (Byte, ByteArray) -> Unit)
+    fun removeOnDataReceivedCallback(key: String)
     fun toggleWifi(
         flag: Boolean,
         ssid: String = "",

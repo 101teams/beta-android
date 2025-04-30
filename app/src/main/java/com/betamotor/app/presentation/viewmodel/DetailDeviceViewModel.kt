@@ -13,6 +13,7 @@ import com.betamotor.app.utils.LocalLogging
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,8 +25,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DetailDeviceViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val bluetoothController: BluetoothController,
-    private val context: Context,
     private val prefManager: PrefManager
 ) : ViewModel(), DefaultLifecycleObserver {
     private val csvDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -77,10 +78,6 @@ class DetailDeviceViewModel @Inject constructor(
     }
 
     private fun startStreaming() {
-        setOnReadDataDESCalback { rliID, fullData ->
-            if (fullData[1].toInt() != constants.SUB_COMMAND_ID and 0xFF) return@setOnReadDataDESCalback
-            onEngineDataReceived(rliID, fullData)
-        }
         subscribeToMultipleRli(engineData)
     }
 
@@ -88,7 +85,7 @@ class DetailDeviceViewModel @Inject constructor(
         unsubscribeFromMultipleRli(engineData.map { it.first })
     }
 
-    fun saveCsvData(type: String, value: String) {
+    private fun saveCsvData(type: String, value: String) {
         if (_isRecording.value) {
             val time = csvDateFormat.format(Date())
             _csvData.value = _csvData.value.toMutableList().apply {
@@ -98,6 +95,8 @@ class DetailDeviceViewModel @Inject constructor(
     }
 
     fun onEngineDataReceived(rliID: Byte, fullData: ByteArray) {
+        if (fullData[1].toInt() != constants.SUB_COMMAND_ID and 0xFF) return
+
         logger.writeLog("engine data received from live subscription")
         when (rliID) {
             constants.RLI_ENGINE_SPEED.toByte() -> extractResData(fullData).toString().also { rpm.value = it; saveCsvData("RPM", it) }
@@ -175,7 +174,7 @@ class DetailDeviceViewModel @Inject constructor(
         sendCommandByteDES(data)
     }
 
-    fun subscribeToMultipleRli(rliList: List<Pair<Int, Long>>) {
+    private fun subscribeToMultipleRli(rliList: List<Pair<Int, Long>>) {
         rliList.forEach { (rliId, updatePeriodMs) ->
             Handler(Looper.getMainLooper()).postDelayed({
                 subscribeToRli(rliId, updatePeriodMs)
@@ -183,13 +182,24 @@ class DetailDeviceViewModel @Inject constructor(
         }
     }
 
-    fun unsubscribeFromMultipleRli(rliList: List<Int>) {
+    private fun unsubscribeFromMultipleRli(rliList: List<Int>) {
         rliList.forEach { unsubscribeFromRli(it) }
     }
 
-    fun setOnReadDataDESCalback(onDataReceived: (Byte, ByteArray) -> Unit) {
-        viewModelScope.launch {
-            bluetoothController.onReadDataDES(onDataReceived)
+    fun addOnDataReceivedCallback(key: String, onDataReceived: (Byte, ByteArray) -> Unit) {
+        if (!bluetoothController.hasCallback(key)) {
+            bluetoothController.addOnDataReceivedCallback(key, onDataReceived)
         }
+    }
+
+    fun removeOnDataReceivedCallback(key: String) {
+        bluetoothController.removeOnDataReceivedCallback(key)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        stopStreaming()
+        _isStreaming.value = false
+        _isRecording.value = false
     }
 }

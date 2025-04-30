@@ -80,12 +80,8 @@ import com.betamotor.app.theme.GrayLight
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
-import com.betamotor.app.utils.LocalLogging
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 fun DetailDeviceScreen(
@@ -239,18 +235,31 @@ fun DetailDeviceScreen(
 
 @Composable
 fun page1(viewModel: DetailDeviceViewModel, navController: NavController, showDialogExport: MutableState<Boolean>, context: Context) {
-    val rpm = viewModel.rpm
-    val gasPosition = viewModel.gasPosition
-    val actuatedSpark = viewModel.actuatedSpark
-    val engineCoolant = viewModel.engineCoolant
-    val airTemp = viewModel.airTemp
-    val atmospherePressure = viewModel.atmospherePressure
-    val operatingHours = viewModel.operatingHours
-    val batteryVoltage = viewModel.batteryVoltage
+    val rpm by viewModel.rpm
+    val gasPosition by viewModel.gasPosition
+    val actuatedSpark by viewModel.actuatedSpark
+    val engineCoolant by viewModel.engineCoolant
+    val airTemp by viewModel.airTemp
+    val atmospherePressure by viewModel.atmospherePressure
+    val operatingHours by viewModel.operatingHours
+    val batteryVoltage by viewModel.batteryVoltage
 
     val isStreaming = viewModel.isStreaming.collectAsState()
     val isRecording = viewModel.isRecording.collectAsState()
     val btViewModel = hiltViewModel<BluetoothViewModel>()
+
+    DisposableEffect(Unit) {
+        val key = "page1"
+        val callback: (Byte, ByteArray) -> Unit = { id, data ->
+            viewModel.onEngineDataReceived(id, data)
+        }
+
+        viewModel.addOnDataReceivedCallback(key, callback)
+
+        onDispose {
+            viewModel.removeOnDataReceivedCallback(key)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -274,14 +283,14 @@ fun page1(viewModel: DetailDeviceViewModel, navController: NavController, showDi
                 ) {
                     Text("ENGINE DATA", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(24.dp))
-                    DetailDataItem(title = "RPM", value = rpm.value, suffix = "rpm")
-                    DetailDataItem(title = "THROTTLE", value = gasPosition.value, suffix = "%")
-                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark.value, suffix = "°")
-                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant.value, suffix = "°C")
-                    DetailDataItem(title = "AIR TEMP.", value = airTemp.value, suffix = "°C")
-                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure.value, suffix = "Mbar")
-                    DetailDataItem(title = "OP. TIME", value = operatingHours.value, suffix = "h")
-                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage.value, suffix = "V")
+                    DetailDataItem(title = "RPM", value = rpm, suffix = "rpm")
+                    DetailDataItem(title = "THROTTLE", value = gasPosition, suffix = "%")
+                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark, suffix = "°")
+                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant, suffix = "°C")
+                    DetailDataItem(title = "AIR TEMP.", value = airTemp, suffix = "°C")
+                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure, suffix = "Mbar")
+                    DetailDataItem(title = "OP. TIME", value = operatingHours, suffix = "h")
+                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage, suffix = "V")
                 }
             }
 
@@ -448,39 +457,38 @@ fun page2(viewModel: DetailDeviceViewModel, context: Context, prefManager: PrefM
     val calibration = remember { mutableStateOf("-") }
     val homologation = remember { mutableStateOf("-") }
 
-    LaunchedEffect(Unit) {
-        viewModel.setOnReadDataDESCalback(onDataReceived = { rliID, fullData ->
-            if (fullData[1].toInt() == 0x0301 and 0xFF) {
-                when (rliID) {
-                    constants.ECU_VIN.toByte() -> {
-                        Log.d("aiaiaiai", convertVINData(fullData))
-                        vin.value = convertVINData(fullData)
+    fun onDataReceived(rliID: Byte, fullData: ByteArray) {
+        if (fullData[1].toInt() == 0x0301 and 0xFF) {
+            when (rliID) {
+                constants.ECU_VIN.toByte() -> {
+                    Log.d("aiaiaiai", convertVINData(fullData))
+                    vin.value = convertVINData(fullData)
 
-                        getVINData(viewModel, constants.ECU_DRAWING_NUMBER)
-                    }
-                    constants.ECU_DRAWING_NUMBER.toByte() -> {
-                        ecuDRW.value = convertVINData(fullData)
+                    getVINData(viewModel, constants.ECU_DRAWING_NUMBER)
+                }
+                constants.ECU_DRAWING_NUMBER.toByte() -> {
+                    ecuDRW.value = convertVINData(fullData)
 
-                        getVINData(viewModel, constants.ECU_HW_NUMBER)
-                    }
-                    constants.ECU_HW_NUMBER.toByte() -> {
-                        ecuHW.value = convertVINData(fullData)
+                    getVINData(viewModel, constants.ECU_HW_NUMBER)
+                }
+                constants.ECU_HW_NUMBER.toByte() -> {
+                    ecuHW.value = convertVINData(fullData)
 
-                        getVINData(viewModel, constants.ECU_SW_NUMBER)
-                    }
-                    constants.ECU_SW_NUMBER.toByte() -> {
-                        ecuSW.value = convertVINData(fullData)
+                    getVINData(viewModel, constants.ECU_SW_NUMBER)
+                }
+                constants.ECU_SW_NUMBER.toByte() -> {
+                    ecuSW.value = convertVINData(fullData)
 
-                        getVINData(viewModel, constants.ECU_SW_VERSION)
-                    }
-                    constants.ECU_SW_VERSION.toByte() -> {
-                        calibration.value = convertVINData(fullData)
+                    getVINData(viewModel, constants.ECU_SW_VERSION)
+                }
+                constants.ECU_SW_VERSION.toByte() -> {
+                    calibration.value = convertVINData(fullData)
 
-                        getVINData(viewModel, constants.ECU_HOMOLOGATION)
-                    }
-                    constants.ECU_HOMOLOGATION.toByte() -> {
-                        homologation.value = convertVINData(fullData)
-                        val jsonPayload = """
+                    getVINData(viewModel, constants.ECU_HOMOLOGATION)
+                }
+                constants.ECU_HOMOLOGATION.toByte() -> {
+                    homologation.value = convertVINData(fullData)
+                    val jsonPayload = """
                             {
                               "vin": "${vin.value}",
                               "ecuDrw": "${ecuDRW.value}",
@@ -490,14 +498,26 @@ fun page2(viewModel: DetailDeviceViewModel, context: Context, prefManager: PrefM
                               "homolCode": "${homologation.value}"
                             }
                         """.trimIndent()
-                        MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
-                    }
+                    MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
                 }
             }
-        })
-
-        getVINData(viewModel, constants.ECU_VIN)
+        }
     }
+
+    DisposableEffect(Unit) {
+        val key = "page2"
+        val callback: (Byte, ByteArray) -> Unit = { id, data ->
+            onDataReceived(id, data)
+        }
+
+        viewModel.addOnDataReceivedCallback(key, callback)
+        getVINData(viewModel, constants.ECU_VIN)
+
+        onDispose {
+            viewModel.removeOnDataReceivedCallback(key)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -538,8 +558,9 @@ fun page3(viewModel: DetailDeviceViewModel) {
 
     val isApply = remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.setOnReadDataDESCalback(onDataReceived = { rliID, fullData ->
+    DisposableEffect(Unit) {
+        val key = "page3"
+        val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
             when (rliID) {
                 constants.TUNE_OFFSET.toByte() -> {
                     if (isApply.value) {
@@ -566,9 +587,14 @@ fun page3(viewModel: DetailDeviceViewModel) {
                     Log.d("TUNEMAX", tuneMax.value.toString())
                 }
             }
-        })
+        }
 
+        viewModel.addOnDataReceivedCallback(key, callback)
         getTuneData(viewModel, constants.TUNE_OFFSET, true, null)
+
+        onDispose {
+            viewModel.removeOnDataReceivedCallback(key)
+        }
     }
 
     Column(
@@ -731,8 +757,9 @@ fun page4(viewModel: DetailDeviceViewModel) {
         return (value.toInt() shr position) and 1
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.setOnReadDataDESCalback(onDataReceived = { rliID, fullData ->
+    DisposableEffect(Unit) {
+        val key = "page4"
+        val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
             if (fullData[0].toInt() == 0x00 && fullData[1].toInt() == 0x01) {
                 val dataLen = fullData[3]
 
@@ -806,9 +833,14 @@ fun page4(viewModel: DetailDeviceViewModel) {
 
                 tvTitleData.value = tempData
             }
-        })
+        }
 
+        viewModel.addOnDataReceivedCallback(key, callback)
         getDiagData(viewModel)
+
+        onDispose {
+            viewModel.removeOnDataReceivedCallback(key)
+        }
     }
 
     Column(
