@@ -124,7 +124,13 @@ fun MyMotorcycleScreen(
             return@LaunchedEffect
         }
 
+        if (selectedDevice.value?.macAddress == null)
+        {
+            return@LaunchedEffect
+        }
+
         prefManager.setSelectedMotorcycleId(selectedDevice.value!!.deviceId)
+        prefManager.setMacAddress(selectedDevice.value!!.macAddress)
         navController.navigate(Screen.DetailDevice.route)
     }
 

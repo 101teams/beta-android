@@ -58,7 +58,6 @@ class AndroidBluetoothController(
     private val DESUuid = UUID.fromString("5638d86e-6590-44cc-a144-c56acf0eb819")
     private val DEScharUuidWx = UUID.fromString("dc5f1ba3-44b0-420a-b0e8-69f686468c67") // write
     private val DEScharUuidRx = UUID.fromString("a8e086f5-e398-4efa-ac30-25fc8be70e1e") // read
-    private val DEScharUuidRxLive = UUID.fromString("d0494f24-4157-4353-b1b9-2b5f6c15d70b") // read, notify
 
     private var SCSService: BluetoothGattService? = null
     private var SCSRX: BluetoothGattCharacteristic? = null
@@ -67,7 +66,6 @@ class AndroidBluetoothController(
     private var DESService: BluetoothGattService? = null
     private var DESRX: BluetoothGattCharacteristic? = null
     private var DESWX: BluetoothGattCharacteristic? = null
-    private var DESRXLIVE: BluetoothGattCharacteristic? = null
 
     private var password: String? = null
     private var timer: Timer? = null
@@ -303,26 +301,12 @@ class AndroidBluetoothController(
 
                     val DESRX = service.getCharacteristic(DEScharUuidRx) ?: return
                     val DESWX = service.getCharacteristic(DEScharUuidWx) ?: return
-                    val DESRXLIVE = service.getCharacteristic(DEScharUuidRxLive) ?: return
 
                     DESRX.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-                    DESRXLIVE.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
-
-                    gatt?.setCharacteristicNotification(DESRXLIVE, true)
-                    DESRXLIVE.descriptors.forEach {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            gatt?.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
-                        } else {
-                            val descriptor = it
-                            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                            gatt?.writeDescriptor(it)
-                        }
-                    }
 
                     this@AndroidBluetoothController.DESService = service
                     this@AndroidBluetoothController.DESRX = DESRX
                     this@AndroidBluetoothController.DESWX = DESWX
-                    this@AndroidBluetoothController.DESRXLIVE = DESRXLIVE
                 }
                 else -> {
                     return
@@ -487,7 +471,6 @@ class AndroidBluetoothController(
                 DESUuid -> return "DES"
                 DEScharUuidRx -> return "DES RX"
                 DEScharUuidWx -> return "DES WX"
-                DEScharUuidRxLive -> return "DES RX LIVE"
                 else -> "Unknown Service => $uuid"
             }
         }
@@ -553,8 +536,6 @@ class AndroidBluetoothController(
                         "Read Data DES failed, data length < 6", Toast.LENGTH_SHORT
                     ).show()
                 }
-            } else if (fromUUID == DEScharUuidRxLive) {
-                dataReceivedCallbacks.values.forEach { it(data[5], data) }
             }
         }
 
@@ -590,7 +571,6 @@ class AndroidBluetoothController(
 
     override fun addOnDataReceivedCallback(key: String, callback: (Byte, ByteArray) -> Unit) {
         dataReceivedCallbacks[key] = callback
-        // Additional implementation details for registering with actual Bluetooth service
     }
 
     override fun removeOnDataReceivedCallback(key: String) {
@@ -794,10 +774,6 @@ class AndroidBluetoothController(
             clearServicesCache()
 
             fun connectDeviceCallback(isSuccess: Boolean, message: String) {
-                if (isSuccess) {
-                    prefManager.setMacAddress(device.macAddress)
-                }
-
                 callback(isSuccess, message)
             }
 

@@ -37,10 +37,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +72,6 @@ import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
-import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
 import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
@@ -82,13 +81,16 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun DetailDeviceScreen(
     navController: NavController
 ) {
-    val btViewModel = hiltViewModel<BluetoothViewModel>()
-    val viewModel = hiltViewModel<DetailDeviceViewModel>()
+    val viewModel = hiltViewModel<BluetoothViewModel>()
+
     val context = LocalContext.current
     val prefManager = PrefManager(context)
 
@@ -111,7 +113,7 @@ fun DetailDeviceScreen(
     LaunchedEffect(lifecycleEvent) {
         when (lifecycleEvent) {
             Lifecycle.Event.ON_DESTROY -> {//before was on pause
-                btViewModel.disconnectDevice()
+                viewModel.disconnectDevice()
                 navController.popBackStack()
             }
             else -> {}
@@ -128,10 +130,12 @@ fun DetailDeviceScreen(
 
     val tab = remember { mutableStateOf(0) }
     val showDialogExport = remember { mutableStateOf(false) }
-    val csvData = viewModel.csvData.collectAsState()
+    val csvData: MutableState<MutableList<String>> = remember { mutableStateOf(mutableListOf()) }
+
+    val isStreaming = remember { mutableStateOf(false) }
 
     BackInvokeHandler {
-        btViewModel.disconnectDevice()
+        viewModel.disconnectDevice()
         navController.popBackStack()
     }
 
@@ -192,6 +196,9 @@ fun DetailDeviceScreen(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null // Removes ripple effect
                                     ) {
+                                        if (index != 0) {
+                                            isStreaming.value = false
+                                        }
                                         tab.value = index
                                     }
                                     .padding(vertical = 8.dp, horizontal = 16.dp),
@@ -215,10 +222,10 @@ fun DetailDeviceScreen(
                     modifier = Modifier.padding(paddingValues),
                 ) {
                     when (tab.value) {
-                        0 -> page1(viewModel, navController, showDialogExport, context)
-                        1 -> page2(viewModel, context, prefManager)
-                        2 -> page3(viewModel)
-                        3 -> page4(viewModel)
+                        0 -> page1(navController, isStreaming, showDialogExport, csvData, context)
+                        1 -> page2(context, prefManager)
+                        2 -> page3()
+                        3 -> page4()
                     }
                 }
             }
@@ -226,38 +233,91 @@ fun DetailDeviceScreen(
     }
 
     if (showDialogExport.value && csvData.value.isNotEmpty()) {
-        ExportDialog(openDialog = showDialogExport, context = context, csvData = csvData.value) {
+        ExportDialog(openDialog = showDialogExport, context = context, csvData = csvData) {
             showDialogExport.value = false
-            viewModel.clearCsvData()
+            csvData.value = mutableListOf()
         }
     }
 }
 
 @Composable
-fun page1(viewModel: DetailDeviceViewModel, navController: NavController, showDialogExport: MutableState<Boolean>, context: Context) {
-    val rpm by viewModel.rpm
-    val gasPosition by viewModel.gasPosition
-    val actuatedSpark by viewModel.actuatedSpark
-    val engineCoolant by viewModel.engineCoolant
-    val airTemp by viewModel.airTemp
-    val atmospherePressure by viewModel.atmospherePressure
-    val operatingHours by viewModel.operatingHours
-    val batteryVoltage by viewModel.batteryVoltage
+fun page1(navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>, context: Context) {
+    val prefManager = PrefManager(context)
+    val isRecording = remember { mutableStateOf(false) }
+    val rpm = remember { mutableStateOf("-") }
+    val gasPosition = remember { mutableStateOf("-") }
+    val actuatedSpark = remember { mutableStateOf("-") }
+    val engineCoolant = remember { mutableStateOf("-") }
+    val airTemp = remember { mutableStateOf("-") }
+    val atmospherePressure = remember { mutableStateOf("-") }
+    val operatingHours = remember { mutableStateOf("-") }
+    val batteryVoltage = remember { mutableStateOf("-") }
 
-    val isStreaming = viewModel.isStreaming.collectAsState()
-    val isRecording = viewModel.isRecording.collectAsState()
     val btViewModel = hiltViewModel<BluetoothViewModel>()
+    val scope = rememberCoroutineScope()
 
-    DisposableEffect(Unit) {
-        val key = "page1"
-        val callback: (Byte, ByteArray) -> Unit = { id, data ->
-            viewModel.onEngineDataReceived(id, data)
+    var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
+
+    LaunchedEffect(lifecycleEvent) {
+        when (lifecycleEvent) {
+            Lifecycle.Event.ON_PAUSE -> {
+                csvData.value = mutableListOf()
+                isStreaming.value = false
+            }
+            else -> {}
         }
+    }
 
-        viewModel.addOnDataReceivedCallback(key, callback)
 
-        onDispose {
-            viewModel.removeOnDataReceivedCallback(key)
+    fun stripToNull(raw: String): String {
+        return if (raw == "-") {
+            "null"
+        } else {
+            raw
+        }
+    }
+
+    fun streamData(){
+        val jsonPayload = """
+                                                    {
+                                                      "macAddress": "${stripToNull(prefManager.getMacAddress())}",
+                                                      "rpm": "${stripToNull(rpm.value)}",
+                                                      "throttle": "${stripToNull(gasPosition.value)}",
+                                                      "sparkAdv": "${stripToNull(actuatedSpark.value)}",
+                                                      "engineTemp": "${stripToNull(engineCoolant.value)}",
+                                                      "airTemp": "${stripToNull(airTemp.value)}",
+                                                      "atmPressure": "${stripToNull(atmospherePressure.value)}",
+                                                      "opTime": "${stripToNull(operatingHours.value)}",
+                                                      "batteryVoltage": "${stripToNull(batteryVoltage.value)}"
+                                                    }
+                                                """.trimIndent()
+                                            MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
+
+        Log.d("call steam", isStreaming.value.toString())
+        if (isStreaming.value) {
+
+            val data = ByteArray(5)
+            data[0] = ((0x0101 shr 8) and 0xFF)
+            data[1] = 0x0101 and 0xFF
+            data[2] = 0x02
+            // get data RPM
+            data[3] = ((constants.RLI_ENGINE_SPEED shr 8) and 0xFF).toByte()
+            data[4] = (constants.RLI_ENGINE_SPEED and 0xFF).toByte()
+            btViewModel.sendCommandByteDES(data)
+        }
+    }
+
+    fun saveCsvData(type: String, value: String){
+        Log.d(type, value)
+        if(isRecording.value) {
+            Log.d("write", value)
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            val time = dateFormat.format(Date())
+
+            val tmpCSVData = csvData.value
+            tmpCSVData.add("$time,$type,$value")
+
+            csvData.value = tmpCSVData
         }
     }
 
@@ -283,14 +343,14 @@ fun page1(viewModel: DetailDeviceViewModel, navController: NavController, showDi
                 ) {
                     Text("ENGINE DATA", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(24.dp))
-                    DetailDataItem(title = "RPM", value = rpm, suffix = "rpm")
-                    DetailDataItem(title = "THROTTLE", value = gasPosition, suffix = "%")
-                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark, suffix = "°")
-                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant, suffix = "°C")
-                    DetailDataItem(title = "AIR TEMP.", value = airTemp, suffix = "°C")
-                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure, suffix = "Mbar")
-                    DetailDataItem(title = "OP. TIME", value = operatingHours, suffix = "h")
-                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage, suffix = "V")
+                    DetailDataItem(title = "RPM", value = rpm.value, suffix = "rpm")
+                    DetailDataItem(title = "THROTTLE", value = gasPosition.value, suffix = "%")
+                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark.value, suffix = "°")
+                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant.value, suffix = "°C")
+                    DetailDataItem(title = "AIR TEMP.", value = airTemp.value, suffix = "°C")
+                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure.value, suffix = "Mbar")
+                    DetailDataItem(title = "OP. TIME", value = operatingHours.value, suffix = "h")
+                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage.value, suffix = "V")
                 }
             }
 
@@ -332,7 +392,149 @@ fun page1(viewModel: DetailDeviceViewModel, navController: NavController, showDi
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            viewModel.toggleStreaming()
+                            isStreaming.value = !isStreaming.value
+
+                            val data = ByteArray(5)
+                            data[0] = ((0x0101 shr 8) and 0xFF)
+                            data[1] = 0x0101 and 0xFF
+                            data[2] = 0x02
+
+                            val key = "ENGINE_DATA_CALLBACK"
+                            val callback: (Byte, ByteArray) -> Unit = {
+                                rliID, fullData ->
+                                if (fullData[1].toInt() == 0x0101 and 0xFF){
+                                    when(rliID) {
+                                        constants.RLI_ENGINE_SPEED.toByte() -> {
+                                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+                                            rpm.value = resData.toString()
+                                            saveCsvData("RPM", resData.toString())
+
+                                            data[3] = ((constants.RLI_GAS_POSITION shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_GAS_POSITION and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_GAS_POSITION.toByte() -> {
+                                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+                                            gasPosition.value = (resData/16).toString()
+                                            saveCsvData("THROTTLE", (resData/16).toString())
+
+                                            data[3] = ((constants.RLI_ACTUATED_SPARK shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_ACTUATED_SPARK and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_ACTUATED_SPARK.toByte() -> {
+                                            val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
+                                            actuatedSpark.value = (resData/16).toString()
+                                            saveCsvData("SPARK ADV", (resData/16).toString())
+
+                                            data[3] = ((constants.RLI_COOLANT_TEMP shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_COOLANT_TEMP and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_COOLANT_TEMP.toByte() -> {
+                                            val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
+                                            engineCoolant.value = (resData/16).toString()
+                                            saveCsvData("ENGINE TEMP", (resData/16).toString())
+
+                                            data[3] = ((constants.RLI_AIR_TEMP shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_AIR_TEMP and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_AIR_TEMP.toByte() -> {
+                                            val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
+                                            airTemp.value = (resData/16).toString()
+                                            saveCsvData("AIR TEMP", (resData/16).toString())
+
+                                            data[3] = ((constants.RLI_ATMOSPHERE_PRESSURE shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_ATMOSPHERE_PRESSURE and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_ATMOSPHERE_PRESSURE.toByte() -> {
+                                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+                                            atmospherePressure.value = resData.toString()
+                                            saveCsvData("ATM PRESSURE", resData.toString())
+
+                                            data[3] = ((constants.RLI_OPERATING_HOURS shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_OPERATING_HOURS and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_OPERATING_HOURS.toByte() -> {
+                                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+                                            operatingHours.value = (resData/8).toString()
+                                            saveCsvData("OP. TIME", (resData/8).toString())
+
+                                            data[3] = ((constants.RLI_BATTERY_VOLTAGE shr 8) and 0xFF).toByte()
+                                            data[4] = (constants.RLI_BATTERY_VOLTAGE and 0xFF).toByte()
+
+                                            if (isStreaming.value) {
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    btViewModel.sendCommandByteDES(data)
+                                                },50)
+                                            }
+                                        }
+                                        constants.RLI_BATTERY_VOLTAGE.toByte() -> {
+                                            val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
+
+                                            batteryVoltage.value = (resData/16).toString()
+                                            saveCsvData("BATTERY VOLTAGE", (resData/16).toString())
+
+                                            val jsonPayload = """
+                                                    {
+                                                      "macAddress": "${stripToNull(prefManager.getMacAddress())}",
+                                                      "rpm": ${stripToNull(rpm.value)},
+                                                      "throttle": ${stripToNull(gasPosition.value)},
+                                                      "sparkAdv": ${stripToNull(actuatedSpark.value)},
+                                                      "engineTemp": ${stripToNull(engineCoolant.value)},
+                                                      "airTemp": ${stripToNull(airTemp.value)},
+                                                      "atmPressure": ${stripToNull(atmospherePressure.value)},
+                                                      "opTime": ${stripToNull(operatingHours.value)},
+                                                      "batteryVoltage": ${stripToNull(batteryVoltage.value)}
+                                                    }
+                                                """.trimIndent()
+                                            MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
+
+
+                                            streamData()
+                                        }
+                                    }
+                                }
+                            }
+
+                            btViewModel.addOnDataReceivedCallback(key, callback)
+
+                            if (isStreaming.value) {
+                                streamData()
+                            }
                         }
                     ) {
                         Column(
@@ -360,7 +562,7 @@ fun page1(viewModel: DetailDeviceViewModel, navController: NavController, showDi
                                 return@clickable
                             }
 
-                            viewModel.toggleRecording()
+                            isRecording.value = !isRecording.value
 
                             if (!isRecording.value) {
                                 showDialogExport.value = true
@@ -410,7 +612,7 @@ fun convertVINData(fullData: ByteArray): String {
     return value
 }
 
-fun getVINData(viewModel: DetailDeviceViewModel, rliId: Int) {
+fun getVINData(btViewModel: BluetoothViewModel, rliId: Int) {
     val data = ByteArray(5)
     data[0] = ((0x0301 shr 8) and 0xFF)
     data[1] = 0x0301 and 0xFF
@@ -420,11 +622,11 @@ fun getVINData(viewModel: DetailDeviceViewModel, rliId: Int) {
     data[4] = (rliId and 0xFF).toByte()
 
     Handler(Looper.getMainLooper()).postDelayed({
-        viewModel.sendCommandByteDES(data)
+        btViewModel.sendCommandByteDES(data)
     },50)
 }
 
-fun getTuneData(viewModel: DetailDeviceViewModel, rliId: Int, isRead: Boolean, writeData: Int?) {
+fun getTuneData(btViewModel: BluetoothViewModel, rliId: Int, isRead: Boolean, writeData: Int?) {
     val data = ByteArray(if(isRead) 5 else 7)
     if (isRead) {
         data[0] = ((0x0101 shr 8) and 0xFF) //read 0x0101 write 0x0102
@@ -444,12 +646,13 @@ fun getTuneData(viewModel: DetailDeviceViewModel, rliId: Int, isRead: Boolean, w
     }
 
     Handler(Looper.getMainLooper()).postDelayed({
-        viewModel.sendCommandByteDES(data)
+        btViewModel.sendCommandByteDES(data)
     },50)
 }
 
 @Composable
-fun page2(viewModel: DetailDeviceViewModel, context: Context, prefManager: PrefManager) {
+fun page2(context: Context, prefManager: PrefManager) {
+    val btViewModel = hiltViewModel<BluetoothViewModel>()
     val vin = remember { mutableStateOf("-") }
     val ecuDRW = remember { mutableStateOf("-") }
     val ecuHW = remember { mutableStateOf("-") }
@@ -457,38 +660,41 @@ fun page2(viewModel: DetailDeviceViewModel, context: Context, prefManager: PrefM
     val calibration = remember { mutableStateOf("-") }
     val homologation = remember { mutableStateOf("-") }
 
-    fun onDataReceived(rliID: Byte, fullData: ByteArray) {
-        if (fullData[1].toInt() == 0x0301 and 0xFF) {
-            when (rliID) {
-                constants.ECU_VIN.toByte() -> {
-                    Log.d("aiaiaiai", convertVINData(fullData))
-                    vin.value = convertVINData(fullData)
+    DisposableEffect(Unit) {
+        val key = "ENGINE_INFO_CALLBACK"
+        val callback: (Byte, ByteArray) -> Unit = {
+            rliID, fullData ->
+            if (fullData[1].toInt() == 0x0301 and 0xFF) {
+                when (rliID) {
+                    constants.ECU_VIN.toByte() -> {
+                        Log.d("aiaiaiai", convertVINData(fullData))
+                        vin.value = convertVINData(fullData)
 
-                    getVINData(viewModel, constants.ECU_DRAWING_NUMBER)
-                }
-                constants.ECU_DRAWING_NUMBER.toByte() -> {
-                    ecuDRW.value = convertVINData(fullData)
+                        getVINData(btViewModel, constants.ECU_DRAWING_NUMBER)
+                    }
+                    constants.ECU_DRAWING_NUMBER.toByte() -> {
+                        ecuDRW.value = convertVINData(fullData)
 
-                    getVINData(viewModel, constants.ECU_HW_NUMBER)
-                }
-                constants.ECU_HW_NUMBER.toByte() -> {
-                    ecuHW.value = convertVINData(fullData)
+                        getVINData(btViewModel, constants.ECU_HW_NUMBER)
+                    }
+                    constants.ECU_HW_NUMBER.toByte() -> {
+                        ecuHW.value = convertVINData(fullData)
 
-                    getVINData(viewModel, constants.ECU_SW_NUMBER)
-                }
-                constants.ECU_SW_NUMBER.toByte() -> {
-                    ecuSW.value = convertVINData(fullData)
+                        getVINData(btViewModel, constants.ECU_SW_NUMBER)
+                    }
+                    constants.ECU_SW_NUMBER.toByte() -> {
+                        ecuSW.value = convertVINData(fullData)
 
-                    getVINData(viewModel, constants.ECU_SW_VERSION)
-                }
-                constants.ECU_SW_VERSION.toByte() -> {
-                    calibration.value = convertVINData(fullData)
+                        getVINData(btViewModel, constants.ECU_SW_VERSION)
+                    }
+                    constants.ECU_SW_VERSION.toByte() -> {
+                        calibration.value = convertVINData(fullData)
 
-                    getVINData(viewModel, constants.ECU_HOMOLOGATION)
-                }
-                constants.ECU_HOMOLOGATION.toByte() -> {
-                    homologation.value = convertVINData(fullData)
-                    val jsonPayload = """
+                        getVINData(btViewModel, constants.ECU_HOMOLOGATION)
+                    }
+                    constants.ECU_HOMOLOGATION.toByte() -> {
+                        homologation.value = convertVINData(fullData)
+                        val jsonPayload = """
                             {
                               "vin": "${vin.value}",
                               "ecuDrw": "${ecuDRW.value}",
@@ -498,26 +704,20 @@ fun page2(viewModel: DetailDeviceViewModel, context: Context, prefManager: PrefM
                               "homolCode": "${homologation.value}"
                             }
                         """.trimIndent()
-                    MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
+                        MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/engineinfo", jsonPayload)
+                    }
                 }
             }
         }
-    }
 
-    DisposableEffect(Unit) {
-        val key = "page2"
-        val callback: (Byte, ByteArray) -> Unit = { id, data ->
-            onDataReceived(id, data)
-        }
+        btViewModel.addOnDataReceivedCallback(key, callback)
 
-        viewModel.addOnDataReceivedCallback(key, callback)
-        getVINData(viewModel, constants.ECU_VIN)
+        getVINData(btViewModel, constants.ECU_VIN)
 
         onDispose {
-            viewModel.removeOnDataReceivedCallback(key)
+            btViewModel.removeOnDataReceivedCallback(key)
         }
     }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -550,7 +750,9 @@ fun page2(viewModel: DetailDeviceViewModel, context: Context, prefManager: PrefM
 }
 
 @Composable
-fun page3(viewModel: DetailDeviceViewModel) {
+fun page3() {
+
+    val btViewModel = hiltViewModel<BluetoothViewModel>()
     val adjustmentValue = remember { mutableStateOf(0) }
     val tuneOffset = remember { mutableStateOf(0) }
     val tuneMin = remember { mutableStateOf(0) }
@@ -559,26 +761,26 @@ fun page3(viewModel: DetailDeviceViewModel) {
     val isApply = remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
-        val key = "page3"
+        val key = "ENGINE_TUNE_CALLBACK"
         val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
             when (rliID) {
                 constants.TUNE_OFFSET.toByte() -> {
                     if (isApply.value) {
                         isApply.value = false
-                        getTuneData(viewModel, constants.TUNE_OFFSET, true, null)
+                        getTuneData(btViewModel, constants.TUNE_OFFSET, true, null)
                     } else {
                         val resData = convertSignedTwosComplement(((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF, 16)
                         tuneOffset.value = 1900 + resData
                         adjustmentValue.value = resData
 
-                        getTuneData(viewModel, constants.TUNE_MIN, true, null)
+                        getTuneData(btViewModel, constants.TUNE_MIN, true, null)
                     }
                 }
                 constants.TUNE_MIN.toByte() -> {
                     val resData = convertSignedTwosComplement(((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF, 16)
                     tuneMin.value = resData
 
-                    getTuneData(viewModel, constants.TUNE_MAX, true, null)
+                    getTuneData(btViewModel, constants.TUNE_MAX, true, null)
                     Log.d("TUNEMIN", tuneMin.value.toString())
                 }
                 constants.TUNE_MAX.toByte() -> {
@@ -589,11 +791,11 @@ fun page3(viewModel: DetailDeviceViewModel) {
             }
         }
 
-        viewModel.addOnDataReceivedCallback(key, callback)
-        getTuneData(viewModel, constants.TUNE_OFFSET, true, null)
+        btViewModel.addOnDataReceivedCallback(key, callback)
+        getTuneData(btViewModel, constants.TUNE_OFFSET, true, null)
 
         onDispose {
-            viewModel.removeOnDataReceivedCallback(key)
+            btViewModel.removeOnDataReceivedCallback(key)
         }
     }
 
@@ -705,7 +907,7 @@ fun page3(viewModel: DetailDeviceViewModel) {
                 .fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(backgroundColor = Green),
             onClick = {
-                getTuneData(viewModel, constants.TUNE_OFFSET, false, adjustmentValue.value)
+                getTuneData(btViewModel, constants.TUNE_OFFSET, false, adjustmentValue.value)
                 isApply.value = true
             },
         ) {
@@ -723,14 +925,14 @@ fun page3(viewModel: DetailDeviceViewModel) {
     }
 }
 
-fun getDiagData(viewModel: DetailDeviceViewModel) {
+fun getDiagData(btViewModel: BluetoothViewModel) {
     val data = ByteArray(3)
     data[0] = 0x00
     data[1] = 0x01
     data[2] = 0x00
 
     Handler(Looper.getMainLooper()).postDelayed({
-        viewModel.sendCommandByteDES(data)
+        btViewModel.sendCommandByteDES(data)
     },50)
 }
 
@@ -745,7 +947,8 @@ fun get4BitsAsHex(byte: Byte, isHigh: Boolean): String {
 }
 
 @Composable
-fun page4(viewModel: DetailDeviceViewModel) {
+fun page4() {
+    val btViewModel = hiltViewModel<BluetoothViewModel>()
     val imgEngineOn = remember { mutableStateOf(false) }
 
     val tvTitleData: MutableState<MutableList<Pair<String, String>>> = remember {
@@ -758,7 +961,7 @@ fun page4(viewModel: DetailDeviceViewModel) {
     }
 
     DisposableEffect(Unit) {
-        val key = "page4"
+        val key = "ENGINE_DIAGNOSE_CALLBACK"
         val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
             if (fullData[0].toInt() == 0x00 && fullData[1].toInt() == 0x01) {
                 val dataLen = fullData[3]
@@ -835,11 +1038,11 @@ fun page4(viewModel: DetailDeviceViewModel) {
             }
         }
 
-        viewModel.addOnDataReceivedCallback(key, callback)
-        getDiagData(viewModel)
+        btViewModel.addOnDataReceivedCallback(key, callback)
+        getDiagData(btViewModel)
 
         onDispose {
-            viewModel.removeOnDataReceivedCallback(key)
+            btViewModel.removeOnDataReceivedCallback(key)
         }
     }
 

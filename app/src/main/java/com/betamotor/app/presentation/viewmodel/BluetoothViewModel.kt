@@ -1,10 +1,14 @@
 package com.betamotor.app.presentation.viewmodel
 
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.data.bluetooth.BluetoothUiState
+import com.betamotor.app.data.constants
 import com.betamotor.app.service.BluetoothController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
@@ -88,6 +92,26 @@ class BluetoothViewModel @Inject constructor(
 
     fun turnOffWifi(callback: (Boolean, String) -> Unit) {
         bluetoothController.toggleWifi(false, callback = callback)
+    }
+
+    fun sendCommand(command: String) {
+        bluetoothController.sendCommand(command)
+    }
+
+    fun sendCommandByteDES(command: ByteArray) {
+        viewModelScope.launch {
+            bluetoothController.sendCommandByteDES(command)
+        }
+    }
+
+    fun addOnDataReceivedCallback(key: String, onDataReceived: (Byte, ByteArray) -> Unit) {
+        if (!bluetoothController.hasCallback(key)) {
+            bluetoothController.addOnDataReceivedCallback(key, onDataReceived)
+        }
+    }
+
+    fun removeOnDataReceivedCallback(key: String) {
+        bluetoothController.removeOnDataReceivedCallback(key)
     }
 
     fun disconnectDevice() {

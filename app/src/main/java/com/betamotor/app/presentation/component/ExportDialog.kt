@@ -38,7 +38,7 @@ import java.util.Locale
 fun ExportDialog(
     openDialog: MutableState<Boolean>,
     context: Context,
-    csvData: List<String>,
+    csvData: MutableState<MutableList<String>>,
     onDone: () -> Unit
 ) {
     Dialog(onDismissRequest = {
@@ -91,7 +91,7 @@ fun ExportDialog(
     }
 }
 
-fun generateCSV(context: Context, csvData: List<String>) {
+fun generateCSV(context: Context, csvData: MutableState<MutableList<String>>) {
     val dateFormat = SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.getDefault())
     val time = dateFormat.format(Date())
 
@@ -105,7 +105,7 @@ fun generateCSV(context: Context, csvData: List<String>) {
     try {
         val writer = FileWriter(file)
         writer.append(csvHeader).append("\n")
-        csvData.forEach { writer.append(it).append("\n") }
+        csvData.value.forEach { writer.append(it).append("\n") }
         writer.flush()
         writer.close()
         println("CSV berhasil dibuat di: ${file.absolutePath}")

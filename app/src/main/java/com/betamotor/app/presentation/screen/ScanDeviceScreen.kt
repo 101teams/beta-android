@@ -312,6 +312,7 @@ fun ScanDeviceScreen(
                     if (deviceIdAlreadyUsed || macAddressAlreadyUsed) {
                         Toast.makeText(context, "Device already saved", Toast.LENGTH_SHORT).show()
                         prefManager.setSelectedMotorcycleId(form.deviceId)
+                        selectedDevice.value?.let { prefManager.setSelectedMotorcycleId(it.macAddress) }
                         navController.navigate(Screen.DetailDevice.route)
                         return@launch
                     }
