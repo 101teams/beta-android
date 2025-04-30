@@ -99,7 +99,7 @@ class PrefManager(
     }
 
     fun getMacAddress(): String {
-        return getData("mac_address", "")
+        return getData("mac_address", "null")
     }
 
     fun clearMacAddress() {

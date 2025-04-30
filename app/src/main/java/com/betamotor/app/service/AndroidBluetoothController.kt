@@ -57,6 +57,7 @@ class AndroidBluetoothController(
     private val DESUuid = UUID.fromString("5638d86e-6590-44cc-a144-c56acf0eb819")
     private val DEScharUuidWx = UUID.fromString("dc5f1ba3-44b0-420a-b0e8-69f686468c67") // write
     private val DEScharUuidRx = UUID.fromString("a8e086f5-e398-4efa-ac30-25fc8be70e1e") // read
+    private val DEScharUuidRxLive = UUID.fromString("d0494f24-4157-4353-b1b9-2b5f6c15d70b") // read, notify
 
     private var SCSService: BluetoothGattService? = null
     private var SCSRX: BluetoothGattCharacteristic? = null
@@ -65,6 +66,7 @@ class AndroidBluetoothController(
     private var DESService: BluetoothGattService? = null
     private var DESRX: BluetoothGattCharacteristic? = null
     private var DESWX: BluetoothGattCharacteristic? = null
+    private var DESRXLIVE: BluetoothGattCharacteristic? = null
 
     private var password: String? = null
     private var timer: Timer? = null
@@ -252,6 +254,33 @@ class AndroidBluetoothController(
             }
         }
 
+        private fun sendSessionBeginRequest() {
+            logger.writeLog("Sending SessionBeginRequest (0xA0) to SCS")
+
+            if (SCSWX == null) {
+                logger.writeLog("SCSWX is null, cannot send SessionBeginRequest")
+                return
+            }
+
+            if (SCSRX == null) {
+                logger.writeLog("SCSRX is null, cannot send SessionBeginRequest")
+                return
+            }
+
+            sendCommandByteSCS(
+                prepareDataPacket(
+                    1L,
+                    0xA0.toByte(),
+                    byteArrayOf(0x00, 0x00, 0x00, 0x00),
+                    byteArrayOf(0x00, 0x00, 0x00, 0x00)
+                )
+            )
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                gatt?.readCharacteristic(SCSRX)
+            }, 500)
+        }
+
         fun setServiceAndChars(service: BluetoothGattService) {
             when (service.uuid) {
                 SCSUuid -> {
@@ -265,22 +294,34 @@ class AndroidBluetoothController(
                     this@AndroidBluetoothController.SCSRX = SCSRX
                     this@AndroidBluetoothController.SCSWX = SCSWX
 
-                    sendCommandByteSCS(prepareDataPacket(1L, 0xA0.toByte(), byteArrayOf(0x00, 0x00, 0x00, 0x00), byteArrayOf(0x00, 0x00, 0x00, 0x00)))
-
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        gatt?.readCharacteristic(SCSRX)
-                    },500)
+                    logger.writeLog("checking session status")
+                    gatt?.readCharacteristic(SCSRX)
                 }
                 DESUuid -> {
                     logger.writeLog("Set DES Service : ${service.uuid}")
 
                     val DESRX = service.getCharacteristic(DEScharUuidRx) ?: return
                     val DESWX = service.getCharacteristic(DEScharUuidWx) ?: return
+                    val DESRXLIVE = service.getCharacteristic(DEScharUuidRxLive) ?: return
 
                     DESRX.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    DESRXLIVE.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+
+                    gatt?.setCharacteristicNotification(DESRXLIVE, true)
+                    DESRXLIVE.descriptors.forEach {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            gatt?.writeDescriptor(it, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                        } else {
+                            val descriptor = it
+                            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                            gatt?.writeDescriptor(it)
+                        }
+                    }
+
                     this@AndroidBluetoothController.DESService = service
                     this@AndroidBluetoothController.DESRX = DESRX
                     this@AndroidBluetoothController.DESWX = DESWX
+                    this@AndroidBluetoothController.DESRXLIVE = DESRXLIVE
                 }
                 else -> {
                     return
@@ -297,9 +338,8 @@ class AndroidBluetoothController(
                 logger.writeLog("Services count => ${gattServices.size}")
 
                 if (BuildConfig.DEBUG) {
-                    val emptyByteArray = ByteArray(0)
-                    onActiveAccessGranted(emptyByteArray)
-                    return
+                    val byteArr = ByteArray(0)
+                    onActiveAccessGranted(byteArr)
                 }
 
                 for (gattService in gattServices) {
@@ -336,7 +376,6 @@ class AndroidBluetoothController(
         }
 
         fun onSecurityAccessValidation(data: ByteArray) {
-            logger.writeLog("onSecurityAccessValidation triggered")
             logByteArray("onDataReadReceivedByte SEED", data)
 
             val udata = UByteArray(14) { 0u } // Create an unsigned byte array of size 14 initialized with zeros
@@ -435,7 +474,6 @@ class AndroidBluetoothController(
         }
 
         fun onActiveAccessGranted(data: ByteArray) {
-            logger.writeLog("onActiveAccessGranted triggered")
             _isConnectionAuthorized.value = true
             cancelTimer()
         }
@@ -448,6 +486,7 @@ class AndroidBluetoothController(
                 DESUuid -> return "DES"
                 DEScharUuidRx -> return "DES RX"
                 DEScharUuidWx -> return "DES WX"
+                DEScharUuidRxLive -> return "DES RX LIVE"
                 else -> "Unknown Service => $uuid"
             }
         }
@@ -458,7 +497,6 @@ class AndroidBluetoothController(
             logger.writeLog(log)
             mqttHelper.publishMessage("BetaDebug", log)
 
-
             if (fromUUID == SCScharUuidRx) {
                 if (data.size < 12) {
                     logger.writeLog("Read Data SCS failed, data length < 12")
@@ -467,13 +505,41 @@ class AndroidBluetoothController(
 
                 val sessionStatus = SessionStatus.fromCode(data[4])
                 when (sessionStatus) {
-                    SessionStatus.HANDSHAKING -> logger.writeLog("Session Status HANDSHAKING")
-                    SessionStatus.NO_SESSION_ACTIVE -> logger.writeLog("Session Status NO_SESSION_ACTIVE")
-                    SessionStatus.SECURITY_ACCESS_VALIDATION -> onSecurityAccessValidation(data)
-                    SessionStatus.ACTIVE_ACCESS_GRANTED -> onActiveAccessGranted(data)
-                    SessionStatus.INACTIVE_ACCESS_DENIED -> logger.writeLog("Session Status INACTIVE_ACCESS_DENIED")
-                    SessionStatus.INACTIVE_ACCESS_DENIED_DEVICE_LOCKED -> logger.writeLog("Session Status INACTIVE_ACCESS_DENIED_DEVICE_LOCKED")
-                    null -> return
+                    SessionStatus.HANDSHAKING -> {
+                        logger.writeLog("Session Status HANDSHAKING — restarting handshake")
+                        sendSessionBeginRequest()
+                    }
+
+                    SessionStatus.NO_SESSION_ACTIVE -> {
+                        logger.writeLog("Session Status NO_SESSION_ACTIVE — retrying handshake")
+                        sendSessionBeginRequest()
+                    }
+
+                    SessionStatus.SECURITY_ACCESS_VALIDATION -> {
+                        logger.writeLog("Session Status SECURITY_ACCESS_VALIDATION — processing seed")
+                        onSecurityAccessValidation(data)
+                    }
+
+                    SessionStatus.ACTIVE_ACCESS_GRANTED -> {
+                        logger.writeLog("Session Status ACTIVE_ACCESS_GRANTED — session is authorized")
+                        onActiveAccessGranted(data)
+                    }
+
+                    SessionStatus.INACTIVE_ACCESS_DENIED -> {
+                        logger.writeLog("Session Status INACTIVE_ACCESS_DENIED — session rejected, try reconnecting.")
+                        cancelTimer()
+                        disconnectDevice()
+                        timeoutCallback(false, "Session rejected, please try reconnecting")
+                    }
+
+                    SessionStatus.INACTIVE_ACCESS_DENIED_DEVICE_LOCKED -> {
+                        logger.writeLog("Session Status INACTIVE_ACCESS_DENIED_DEVICE_LOCKED — wait 10s then reconnect")
+                        cancelTimer()
+                        disconnectDevice()
+                        timeoutCallback(false, "Device is locked, please wait 10 seconds and try again")
+                    }
+
+                    null -> logger.writeLog("Unknown session status: ${data[4]}")
                 }
             } else if (fromUUID == DEScharUuidRx) {
                 if (data.size >= 6) {
@@ -486,6 +552,8 @@ class AndroidBluetoothController(
                         "Read Data DES failed, data length < 6", Toast.LENGTH_SHORT
                     ).show()
                 }
+            } else if (fromUUID == DEScharUuidRxLive) {
+                onDataReceivedCallback(data[5], data)
             }
         }
 
@@ -511,13 +579,7 @@ class AndroidBluetoothController(
             descriptor: BluetoothGattDescriptor?,
             status: Int
         ) {
-            if (status == BluetoothGatt.GATT_SUCCESS && password != null) {
-                Timer().schedule(2000) {
-                    password?.let {
-                        sendCommand(it)
-                    }
-                }
-            }
+            logger.writeLog("onDescriptorWrite status: $status")
         }
     }
 
@@ -799,16 +861,20 @@ class AndroidBluetoothController(
         sendCommandByte(command, SCSWX)
     }
 
-    override fun sendCommandByteDES(command: ByteArray) {
-        val DESWX = DESWX ?: return
-
+    private fun addCRCtoCommand(command: ByteArray): ByteArray {
         val data = ByteArray(command.size + 1)
         for ((index, i) in command.withIndex()) {
             data[index] = i
         }
 
         data[command.size] = calculateCRC(data.copyOfRange(0, command.size - 1))
+        return data
+    }
 
+    override fun sendCommandByteDES(command: ByteArray) {
+        val DESWX = DESWX ?: return
+
+        val data = addCRCtoCommand(command)
         sendCommandByte(data, DESWX)
 
         Handler(Looper.getMainLooper()).postDelayed({
@@ -962,4 +1028,6 @@ enum class SessionStatus(val code: Byte) {
     companion object {
         fun fromCode(code: Byte): SessionStatus? = entries.find { it.code == code }
     }
+
+    fun toByte(): Byte = code
 }
