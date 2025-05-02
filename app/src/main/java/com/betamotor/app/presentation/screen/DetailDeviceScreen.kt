@@ -68,6 +68,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.betamotor.app.R
 import com.betamotor.app.data.constants
+import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
 import com.betamotor.app.presentation.component.observeLifecycle
@@ -82,6 +83,9 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -92,6 +96,7 @@ fun DetailDeviceScreen(
 ) {
     val viewModel = hiltViewModel<BluetoothViewModel>()
     val detailDeviceViewModel = hiltViewModel<DetailDeviceViewModel>()
+    val state by viewModel.state.collectAsState()
 
     val context = LocalContext.current
     val prefManager = PrefManager(context)
@@ -99,6 +104,15 @@ fun DetailDeviceScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
     viewModel.observeLifecycle(lifecycle = lifecycleOwner.lifecycle)
+
+    fun goBackToHome() {
+        viewModel.disconnectDevice()
+        navController.navigate(Screen.MyMotorcycle.route) {
+            popUpTo(navController.graph.id) {
+                inclusive = true
+            }
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val lifecycleObserver = LifecycleEventObserver { _, event ->
@@ -115,8 +129,7 @@ fun DetailDeviceScreen(
     LaunchedEffect(lifecycleEvent) {
         when (lifecycleEvent) {
             Lifecycle.Event.ON_DESTROY -> {//before was on pause
-                viewModel.disconnectDevice()
-                navController.popBackStack()
+                goBackToHome()
             }
             else -> {}
         }
@@ -137,8 +150,7 @@ fun DetailDeviceScreen(
     val isStreaming = remember { mutableStateOf(false) }
 
     BackInvokeHandler {
-        viewModel.disconnectDevice()
-        navController.popBackStack()
+        goBackToHome()
     }
 
     Box (
@@ -239,6 +251,54 @@ fun DetailDeviceScreen(
     }
 }
 
+fun parseSensorValue(id: Int, fullData: ByteArray): String? {
+    val value = ((fullData[6].toInt() and 0xFF) shl 8) or (fullData[7].toInt() and 0xFF)
+    return when (id) {
+        constants.RLI_ENGINE_SPEED -> value.toString()
+        constants.RLI_GAS_POSITION -> (value / 16).toString()
+        constants.RLI_ACTUATED_SPARK -> (convertSignedTwosComplement(value, 16) / 16).toString()
+        constants.RLI_COOLANT_TEMP -> (convertSignedTwosComplement(value, 16) / 16).toString()
+        constants.RLI_AIR_TEMP -> (convertSignedTwosComplement(value, 16) / 16).toString()
+        constants.RLI_ATMOSPHERE_PRESSURE -> value.toString()
+        constants.RLI_OPERATING_HOURS -> (value / 8).toString()
+        constants.RLI_BATTERY_VOLTAGE -> (value / 16).toString()
+        else -> null
+    }
+}
+
+fun updateViewModel(viewModel: DetailDeviceViewModel, id: Int, value: String) {
+    when (id) {
+        constants.RLI_ENGINE_SPEED -> viewModel.updateRpm(value)
+        constants.RLI_GAS_POSITION -> viewModel.updateGasPosition(value)
+        constants.RLI_ACTUATED_SPARK -> viewModel.updateActuatedSpark(value)
+        constants.RLI_COOLANT_TEMP -> viewModel.updateEngineCoolant(value)
+        constants.RLI_AIR_TEMP -> viewModel.updateAirTemp(value)
+        constants.RLI_ATMOSPHERE_PRESSURE -> viewModel.updateAtmospherePressure(value)
+        constants.RLI_OPERATING_HOURS -> viewModel.updateOperatingHours(value)
+        constants.RLI_BATTERY_VOLTAGE -> viewModel.updateBatteryVoltage(value)
+    }
+}
+
+fun sensorName(id: Int): String = when (id) {
+    constants.RLI_ENGINE_SPEED -> "RPM"
+    constants.RLI_GAS_POSITION -> "THROTTLE"
+    constants.RLI_ACTUATED_SPARK -> "SPARK ADV"
+    constants.RLI_COOLANT_TEMP -> "ENGINE TEMP"
+    constants.RLI_AIR_TEMP -> "AIR TEMP"
+    constants.RLI_ATMOSPHERE_PRESSURE -> "ATM PRESSURE"
+    constants.RLI_OPERATING_HOURS -> "OP. TIME"
+    constants.RLI_BATTERY_VOLTAGE -> "BATTERY VOLTAGE"
+    else -> "UNKNOWN"
+}
+
+fun stripToNull(raw: String): String {
+    return if (raw.isBlank() || raw == "-") {
+        "null"
+    } else {
+        raw
+    }
+}
+
 @Composable
 fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceViewModel, navController: NavController, isStreaming: MutableState<Boolean>, showDialogExport: MutableState<Boolean>, csvData: MutableState<MutableList<String>>, context: Context) {
     val prefManager = PrefManager(context)
@@ -252,181 +312,95 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
     val operatingHours by detailDeviceViewModel.operatingHours.collectAsState()
     val batteryVoltage by detailDeviceViewModel.batteryVoltage.collectAsState()
 
-    fun streamData(){
-        Log.d("helow", "is streaming? ${isStreaming.value}")
-        if (isStreaming.value) {
+    val dataIds = listOf(
+        constants.RLI_ENGINE_SPEED,
+        constants.RLI_GAS_POSITION,
+        constants.RLI_ACTUATED_SPARK,
+        constants.RLI_COOLANT_TEMP,
+        constants.RLI_AIR_TEMP,
+        constants.RLI_ATMOSPHERE_PRESSURE,
+        constants.RLI_OPERATING_HOURS,
+        constants.RLI_BATTERY_VOLTAGE
+    )
 
-            val data = ByteArray(5)
-            data[0] = ((0x0101 shr 8) and 0xFF)
-            data[1] = 0x0101 and 0xFF
-            data[2] = 0x02
-            // get data RPM
-            data[3] = ((constants.RLI_ENGINE_SPEED shr 8) and 0xFF).toByte()
-            data[4] = (constants.RLI_ENGINE_SPEED and 0xFF).toByte()
-            btViewModel.sendCommandByteDES(data)
+    fun goBackToHome() {
+        btViewModel.disconnectDevice()
+        navController.navigate(Screen.MyMotorcycle.route) {
+            popUpTo(navController.graph.id) {
+                inclusive = true
+            }
         }
     }
 
-    fun saveCsvData(type: String, value: String){
-        Log.d(type, value)
-        if(isRecording) {
-            Log.d("write", value)
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            val time = dateFormat.format(Date())
-
-            val tmpCSVData = csvData.value
-            tmpCSVData.add("$time,$type,$value")
-
-            csvData.value = tmpCSVData
+    fun saveCsvData(type: String, value: String) {
+        if (isRecording) {
+            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            csvData.value.add("$time,$type,$value")
         }
     }
 
-    DisposableEffect(Unit) {
-        val data = ByteArray(5)
-        data[0] = ((0x0101 shr 8) and 0xFF)
-        data[1] = 0x0101 and 0xFF
-        data[2] = 0x02
+    fun fetchAndContinue(index: Int = 0, result: MutableMap<Int, String> = mutableMapOf()) {
+        if (!isStreaming.value) {
+            return
+        }
 
-        val key = "ENGINE_DATA_CALLBACK"
-        val callback: (Byte, ByteArray) -> Unit = {
-                rliID, fullData ->
-            if (fullData[0].toInt() == 0x01 && fullData[1].toInt() == 0x01){ // commandId: 0x0101
-                when(rliID) {
-                    constants.RLI_ENGINE_SPEED.toByte() -> {
-                        val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                        detailDeviceViewModel.updateRpm(resData.toString())
-                        saveCsvData("RPM", resData.toString())
+        if (index >= dataIds.size) {
+            val payload = mapOf(
+                "macAddress" to prefManager.getMacAddress(),
+                "rpm" to stripToNull(result[constants.RLI_ENGINE_SPEED] ?: rpm),
+                "throttle" to stripToNull(result[constants.RLI_GAS_POSITION] ?: gasPosition),
+                "sparkAdv" to stripToNull(result[constants.RLI_ACTUATED_SPARK] ?: actuatedSpark),
+                "engineTemp" to stripToNull(result[constants.RLI_COOLANT_TEMP] ?: engineCoolant),
+                "airTemp" to stripToNull(result[constants.RLI_AIR_TEMP] ?: airTemp),
+                "atmPressure" to stripToNull(result[constants.RLI_ATMOSPHERE_PRESSURE] ?: atmospherePressure),
+                "opTime" to stripToNull(result[constants.RLI_OPERATING_HOURS] ?: operatingHours),
+                "batteryVoltage" to stripToNull(result[constants.RLI_BATTERY_VOLTAGE] ?: batteryVoltage)
+            ).mapValues { it.value.ifBlank { "null" } }
 
-                        data[3] = ((constants.RLI_GAS_POSITION shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_GAS_POSITION and 0xFF).toByte()
+            MQTTHelper(context).publishMessage(
+                "Beta/${prefManager.getSelectedMotorcycleId()}/enginedata",
+                JSONObject(payload).toString(2)
+            )
 
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_GAS_POSITION.toByte() -> {
-                        val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                        detailDeviceViewModel.updateGasPosition((resData/16).toString())
-                        saveCsvData("THROTTLE", (resData/16).toString())
+            fetchAndContinue()
+            return
+        }
 
-                        data[3] = ((constants.RLI_ACTUATED_SPARK shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_ACTUATED_SPARK and 0xFF).toByte()
+        val id = dataIds[index]
+        val data = byteArrayOf(0x01, 0x01, 0x02, (id shr 8).toByte(), (id and 0xFF).toByte())
+        val key = "fetch_$id"
 
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_ACTUATED_SPARK.toByte() -> {
-                        val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-                        detailDeviceViewModel.updateActuatedSpark((resData/16).toString())
-                        saveCsvData("SPARK ADV", (resData/16).toString())
+        val handler = Handler(Looper.getMainLooper())
+        var callbackCalled = false
 
-                        data[3] = ((constants.RLI_COOLANT_TEMP shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_COOLANT_TEMP and 0xFF).toByte()
+        val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
+            if (rliID.toInt() == id) {
+                callbackCalled = true
+                btViewModel.removeOnDataReceivedCallback(key)
 
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_COOLANT_TEMP.toByte() -> {
-                        val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-                        detailDeviceViewModel.updateEngineCoolant((resData/16).toString())
-                        saveCsvData("ENGINE TEMP", (resData/16).toString())
-
-                        data[3] = ((constants.RLI_AIR_TEMP shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_AIR_TEMP and 0xFF).toByte()
-
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_AIR_TEMP.toByte() -> {
-                        val resData = convertSignedTwosComplement(((fullData[6].toInt() shl 8) or fullData[7].toInt()) and 0xFFFF, 16)
-                        detailDeviceViewModel.updateAirTemp((resData/16).toString())
-                        saveCsvData("AIR TEMP", (resData/16).toString())
-
-                        data[3] = ((constants.RLI_ATMOSPHERE_PRESSURE shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_ATMOSPHERE_PRESSURE and 0xFF).toByte()
-
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_ATMOSPHERE_PRESSURE.toByte() -> {
-                        val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                        detailDeviceViewModel.updateAtmospherePressure(resData.toString())
-                        saveCsvData("ATM PRESSURE", resData.toString())
-
-                        data[3] = ((constants.RLI_OPERATING_HOURS shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_OPERATING_HOURS and 0xFF).toByte()
-
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_OPERATING_HOURS.toByte() -> {
-                        val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-                        detailDeviceViewModel.updateOperatingHours((resData/8).toString())
-                        saveCsvData("OP. TIME", (resData/8).toString())
-
-                        data[3] = ((constants.RLI_BATTERY_VOLTAGE shr 8) and 0xFF).toByte()
-                        data[4] = (constants.RLI_BATTERY_VOLTAGE and 0xFF).toByte()
-
-                        if (isStreaming.value) {
-                            Handler(Looper.getMainLooper()).postDelayed({
-                                btViewModel.sendCommandByteDES(data)
-                            },50)
-                        }
-                    }
-                    constants.RLI_BATTERY_VOLTAGE.toByte() -> {
-                        val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
-
-                        detailDeviceViewModel.updateBatteryVoltage((resData/16).toString())
-                        saveCsvData("BATTERY VOLTAGE", (resData/16).toString())
-
-                        if (prefManager.getMacAddress().isNotBlank()) {
-                            val jsonPayload = """
-                                                    {
-                                                      "macAddress": "${prefManager.getMacAddress()}",
-                                                      "rpm": "$rpm",
-                                                      "throttle": "$gasPosition",
-                                                      "sparkAdv": "$actuatedSpark",
-                                                      "engineTemp": "$engineCoolant",
-                                                      "airTemp": "$airTemp",
-                                                      "atmPressure": "$atmospherePressure",
-                                                      "opTime": "$operatingHours",
-                                                      "batteryVoltage": "$batteryVoltage"
-                                                    }
-                                                """.trimIndent()
-                            MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginedata", jsonPayload)
-                        }
-
-
-                        streamData()
-                    }
+                val value = parseSensorValue(id, fullData)
+                if (value != null) {
+                    result[id] = value
+                    updateViewModel(detailDeviceViewModel, id, value)
+                    saveCsvData(sensorName(id), value)
                 }
+                fetchAndContinue(index + 1, result)
             }
         }
 
         btViewModel.addOnDataReceivedCallback(key, callback)
+        btViewModel.sendCommandByteDES(data)
 
-        streamData()
+        handler.postDelayed({
+            if (!callbackCalled) {
+                btViewModel.removeOnDataReceivedCallback(key)
+                fetchAndContinue(index + 1, result)
+            }
+        }, 200L)
+    }
 
-        onDispose {
-            btViewModel.removeOnDataReceivedCallback(key)
-        }
+    LaunchedEffect(Unit) {
+        fetchAndContinue()
     }
 
     LazyColumn(
@@ -472,8 +446,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                     .padding(top = 12.dp),
                 contentPadding = PaddingValues(0.dp),
                 onClick = {
-                    btViewModel.disconnectDevice()
-                    navController.popBackStack()
+                    goBackToHome()
                 },
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent,),
                 border = BorderStroke(1.dp, Color.Red),
@@ -501,7 +474,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                             indication = null
                         ) {
                             isStreaming.value = !isStreaming.value
-                            streamData()
+                            fetchAndContinue()
                         }
                     ) {
                         Column(
