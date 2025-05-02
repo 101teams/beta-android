@@ -954,88 +954,93 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
 
                 var mqttCodesPayload = ""
 
-                for (x in 1..dataLoop) {
-                    var title = ""
-                    var value = ""
+                try {
+                    for (x in 1..dataLoop) {
+                        var title = ""
+                        var value = ""
 
-                    val byte0 = fullData[firstIndex]
-                    val byte1 = fullData[firstIndex+1]
-                    val byte2 = fullData[firstIndex+2]
+                        val byte0 = fullData[firstIndex]
+                        val byte1 = fullData[firstIndex+1]
+                        val byte2 = fullData[firstIndex+2]
 
-                    //first prefix
-                    title += if (getBit(byte0,7) == 1) {
-                        if (getBit(byte0, 6) == 1) {
-                            "U"
+                        //first prefix
+                        title += if (getBit(byte0,7) == 1) {
+                            if (getBit(byte0, 6) == 1) {
+                                "U"
+                            } else {
+                                "B"
+                            }
                         } else {
-                            "B"
+                            if (getBit(byte0, 6) == 1) {
+                                "C"
+                            } else {
+                                "P"
+                            }
                         }
-                    } else {
-                        if (getBit(byte0, 6) == 1) {
-                            "C"
+
+                        //second prefix
+                        title += if (getBit(byte0,5) == 1) {
+                            if (getBit(byte0, 4) == 1) {
+                                "3"
+                            } else {
+                                "2"
+                            }
                         } else {
-                            "P"
+                            if (getBit(byte0, 4) == 1) {
+                                "1"
+                            } else {
+                                "0"
+                            }
                         }
-                    }
 
-                    //second prefix
-                    title += if (getBit(byte0,5) == 1) {
-                        if (getBit(byte0, 4) == 1) {
-                            "3"
+                        title += get4BitsAsHex(byte0, false)
+                        title += get4BitsAsHex(byte1, true)
+                        title += get4BitsAsHex(byte1, false)
+
+                        if (getBit(byte2, 0).toString() == "0" &&
+                            getBit(byte2, 1).toString() == "0" &&
+                            getBit(byte2, 2).toString() == "0" &&
+                            getBit(byte2, 3).toString() == "0") {
+                            value += "NO FAULT"
                         } else {
-                            "2"
+                            for (n in 7 downTo 0) {
+                                value += getBit(byte2, n).toString()
+                            }
                         }
-                    } else {
-                        if (getBit(byte0, 4) == 1) {
-                            "1"
-                        } else {
-                            "0"
+
+                        if (mqttCodesPayload != "") {
+                            mqttCodesPayload += ","
                         }
-                    }
-
-                    title += get4BitsAsHex(byte0, false)
-                    title += get4BitsAsHex(byte1, true)
-                    title += get4BitsAsHex(byte1, false)
-
-                    if (getBit(byte2, 0).toString() == "0" &&
-                        getBit(byte2, 1).toString() == "0" &&
-                        getBit(byte2, 2).toString() == "0" &&
-                        getBit(byte2, 3).toString() == "0") {
-                        value += "NO FAULT"
-                    } else {
-                        for (n in 7 downTo 0) {
-                            value += getBit(byte2, n).toString()
-                        }
-                    }
-
-                    if (mqttCodesPayload != "") {
-                        mqttCodesPayload += ","
-                    }
-                    mqttCodesPayload += """
+                        mqttCodesPayload += """
                             {
                               "code": "$title",
                               "binaryValue": "$value"
                             }
                         """.trimIndent()
 
-                    tempData.add(Pair(title, value))
+                        tempData.add(Pair(title, value))
 
-                    //set lamp
-                    if (!imgEngineOn.value) {
-                        imgEngineOn.value = getBit(byte2, 7).toString() == "1"
+                        //set lamp
+                        if (!imgEngineOn.value) {
+                            imgEngineOn.value = getBit(byte2, 7).toString() == "1"
+                        }
+
+                        firstIndex += 10
                     }
-
-                    firstIndex += 10
+                } catch (e: ArrayIndexOutOfBoundsException) {
+                    Log.e("Error", "ArrayIndexOutOfBoundsException when parsing DTC (page4): ${e.message}")
                 }
 
                 if (prefManager.getMacAddress().isNotBlank()) {
                     val jsonPayload = """
                             {
                               "macAddress": "${prefManager.getMacAddress()}",
-                              "codes": "[${mqttCodesPayload}]",
+                              "codes": [${mqttCodesPayload}],
                               "checkEngineLight": "${imgEngineOn.value}"
                             }
                         """.trimIndent()
-                    MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginediagnose", jsonPayload)
+
+                    MQTTHelper(context).publishMessage("Beta/${prefManager.getSelectedMotorcycleId()}/enginediagnose", JSONObject(jsonPayload).toString(2))
                 }
 
                 tvTitleData.value = tempData
