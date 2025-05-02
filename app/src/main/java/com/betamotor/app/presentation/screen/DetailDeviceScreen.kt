@@ -290,7 +290,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
         val key = "ENGINE_DATA_CALLBACK"
         val callback: (Byte, ByteArray) -> Unit = {
                 rliID, fullData ->
-            if (fullData[1].toInt() == 0x0101 and 0xFF){
+            if (fullData[0].toInt() == 0x01 && fullData[1].toInt() == 0x01){ // commandId: 0x0101
                 when(rliID) {
                     constants.RLI_ENGINE_SPEED.toByte() -> {
                         val resData = ((fullData[6].toUByte().toInt() shl 8) or fullData[7].toUByte().toInt()) and 0xFFFF
@@ -630,7 +630,8 @@ fun page2(btViewModel: BluetoothViewModel, context: Context, prefManager: PrefMa
         val key = "ENGINE_INFO_CALLBACK"
         val callback: (Byte, ByteArray) -> Unit = {
             rliID, fullData ->
-            if (fullData[1].toInt() == 0x0301 and 0xFF) {
+            Log.d("helow", key)
+            if (fullData[0].toInt() == 0x03 && fullData[1].toInt() == 0x01) { // commandId: 0x0301
                 when (rliID) {
                     constants.ECU_VIN.toByte() -> {
                         Log.d("aiaiaiai", convertVINData(fullData))
