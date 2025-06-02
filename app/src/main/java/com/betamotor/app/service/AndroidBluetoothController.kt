@@ -425,8 +425,15 @@ class AndroidBluetoothController(
 
                     // use IS DISCONNECTING if need to close screen faster
                     BluetoothProfile.STATE_DISCONNECTED -> {
+                        logger.writeLog("Disconnected from device")
                         gatt?.close()
                         resetLocalState()
+
+                        Toast.makeText(
+                            context,
+                            "Disconnected from device, please reconnect",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
@@ -469,6 +476,10 @@ class AndroidBluetoothController(
 
                 BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
                     logger.writeLog("BLE_CONNECT_ERR: write not permitted")
+                }
+
+                BluetoothGatt.GATT_INSUFFICIENT_AUTHORIZATION -> {
+                    logger.writeLog("BLE_CONNECT_ERR: insufficient authorization")
                 }
 
                 else -> {
@@ -860,7 +871,7 @@ class AndroidBluetoothController(
 
     override fun sendCommandByteDES(command: ByteArray) {
         if (BuildConfig.DEBUG) { // simulate engine data on debug mode
-            if (command[1].toInt() == 0x0101 and 0xFF) { // engine data
+            if (command[0].toInt() == 0x01 && command[1].toInt() == 0x01) { // engine data
                 val random = java.util.Random()
                 val rpmValue = random.nextInt(65536)
                 val gasValue = random.nextInt(65536)
@@ -881,6 +892,18 @@ class AndroidBluetoothController(
                     ) {
                     onDataReadReceived(rpm, DEScharUuidRx)
                 }
+            } else if (command[0].toInt() == 0x00 && command[1].toInt() == 0x01) { // DTC
+                val data = byteArrayOf(
+                    0x00, 0x01, 0x00, 0x6E.toByte(), 0x01, 0x05, 0x62, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x01, 0x20, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x01, 0x41, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x30, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x01, 0x35, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x15, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                    0x10, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0x85.toByte(),
+                    0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x02, 0x64,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+                )
+
+                onDataReadReceived(data, DEScharUuidRx)
             }
         }
 

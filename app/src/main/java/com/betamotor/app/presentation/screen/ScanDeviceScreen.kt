@@ -74,12 +74,14 @@ import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
+import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
 import com.betamotor.app.utils.SystemBroadcastReceiver
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -313,6 +315,15 @@ fun ScanDeviceScreen(
                         Toast.makeText(context, "Device already saved", Toast.LENGTH_SHORT).show()
                         prefManager.setSelectedMotorcycleId(form.deviceId)
                         selectedDevice.value?.let { prefManager.setMacAddress(it.macAddress) }
+
+                        MQTTHelper(context).publishMessage("BetaDebug", JSONObject(
+                            mapOf(
+                                "deviceId" to prefManager.getSelectedMotorcycleId(),
+                                "macAddress" to prefManager.getMacAddress(),
+                                "action" to "moving to detailScreen from scanDevice's deviceIdAlreadyUsed/macAddressAlreadyUsed",
+                            )
+                        ).toString())
+
                         navController.navigate(Screen.DetailDevice.route)
                         return@launch
                     }
@@ -332,6 +343,14 @@ fun ScanDeviceScreen(
                     if (success) {
                         prefManager.setSelectedMotorcycleId(form.deviceId)
                         selectedDevice.value?.let { prefManager.setMacAddress(it.macAddress) }
+
+                        MQTTHelper(context).publishMessage("BetaDebug", JSONObject(
+                            mapOf(
+                                "deviceId" to prefManager.getSelectedMotorcycleId(),
+                                "macAddress" to prefManager.getMacAddress(),
+                                "action" to "moving to detailScreen from scanDevice's form's if (success)",
+                            )
+                        ).toString())
                         navController.navigate(Screen.DetailDevice.route)
                     }
 

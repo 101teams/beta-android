@@ -60,10 +60,12 @@ import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.LocalLogging
+import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import org.json.JSONObject
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -131,6 +133,14 @@ fun MyMotorcycleScreen(
 
         prefManager.setSelectedMotorcycleId(selectedDevice.value!!.deviceId)
         prefManager.setMacAddress(selectedDevice.value!!.macAddress)
+
+        MQTTHelper(context).publishMessage("BetaDebug", JSONObject(
+            mapOf(
+                "deviceId" to selectedDevice.value!!.deviceId,
+                "macAddress" to selectedDevice.value!!.macAddress,
+                "action" to "moving to detailScreen from myMotorcycle's isConnectionAuthorized = true",
+            )
+        ).toString())
         navController.navigate(Screen.DetailDevice.route)
     }
 
