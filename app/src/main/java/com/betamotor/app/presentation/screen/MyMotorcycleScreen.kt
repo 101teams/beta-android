@@ -14,13 +14,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -38,9 +42,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -51,6 +57,7 @@ import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.CheckPermission
+import com.betamotor.app.presentation.component.Input
 import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.MotorcycleViewModel
@@ -66,6 +73,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import org.json.JSONObject
+import com.betamotor.app.theme.RobotoCondensed
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -83,6 +91,7 @@ fun MyMotorcycleScreen(
     val isConnecting = remember { mutableStateOf(false) }
     val selectedDevice = remember { mutableStateOf<MotorcycleItem?>(null) }
     val btState by bluetoothViewModel.state.collectAsState()
+    val vinInput = remember { mutableStateOf("") }
 
     var checkedPermission by remember { mutableStateOf(false) }
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(
@@ -170,7 +179,7 @@ fun MyMotorcycleScreen(
                 horizontalArrangement = Arrangement.Center,
             ) {
                 Text(
-                    text = "My Motorcycles",
+                    text = "My Garage",
                     modifier = Modifier,
                     style = MaterialTheme.typography.h4,
                     fontSize = 20.sp,
@@ -201,6 +210,37 @@ fun MyMotorcycleScreen(
                         .background(color = Green, shape = RoundedCornerShape(4.dp))
                         .padding(vertical = 6.dp, horizontal = 12.dp)
                 )
+            }
+
+            Row(modifier = Modifier.padding(8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Input(
+                    modifier = Modifier,
+                    field = null,
+                    placeholder = "VIN",
+                    binding = vinInput,
+                    disabled = false,
+                    fillMaxWidth = false,
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        imeAction = ImeAction.Done
+                    ),
+                    inputTextStyle = TextStyle(
+                        fontFamily = RobotoCondensed,
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 12.sp,
+                        color = White,
+                    ),
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(onClick = {}) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.search),
+                        contentDescription = "Search",
+                        tint = White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             if (isLoading.value) {

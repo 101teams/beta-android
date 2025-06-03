@@ -113,6 +113,7 @@ fun Input(
     modifierParent: Modifier = Modifier,
     trailingUnit: String? = null,
     inputTextStyle: TextStyle? = null,
+    fillMaxWidth: Boolean = true,
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -139,7 +140,7 @@ fun Input(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .weight(1f)
+                    .then(modifier)
             ) {
                 OutlinedTextField(
                     value = binding.value,
@@ -156,15 +157,14 @@ fun Input(
                                 color = Black,
                                 textAlign = inputTextStyle?.textAlign ?: TextAlign.Start,
                             ),
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier,
                         )
                     },
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
                         .onFocusChanged {
                             isFocused = it.isFocused
-                        }
-                        .then(modifier),
+                        },
                     singleLine = true,
                     keyboardOptions = keyboardOptions ?: KeyboardOptions.Default,
                     keyboardActions = keyboardActions ?: KeyboardActions.Default,
