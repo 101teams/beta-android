@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.theme.Black
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
@@ -57,7 +60,16 @@ fun SettingScreen(navController: NavController) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxSize().background(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Gray,
+                    Black,
+                ),
+                start = Offset(0f, 0f),
+                end = Offset(0f, Float.POSITIVE_INFINITY)
+            )
+        )
     ) {
         Row(
             modifier = Modifier
@@ -139,11 +151,11 @@ fun LanguageSelector(
     
     val languageOptions = listOf(
         "system" to stringResource(R.string.system_default),
-        "en" to stringResource(R.string.english),
-        "fr" to stringResource(R.string.french),
-        "de" to stringResource(R.string.german),
-        "it" to stringResource(R.string.italian),
-        "es" to stringResource(R.string.spanish)
+        "en" to "English",
+        "fr" to "Français",
+        "de" to "Deutsch",
+        "it" to "Italiano",
+        "es" to "Español"
     )
     
     val currentLanguageDisplay = languageOptions.find { it.first == currentLanguage }?.second
