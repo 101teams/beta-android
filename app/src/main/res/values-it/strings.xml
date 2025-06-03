@@ -1,0 +1,105 @@
+<resources>
+    <string name="app_name">Betamotor_28Apr2025</string>
+    <string name="connection_timeout">Timeout di Connessione</string>
+    <string name="nearby_bike">Moto Vicine</string>
+    <string name="no_name">Nessun Nome</string>
+    <string name="done">Fatto</string>
+    <string name="bt_location_request">Attenzione</string>
+    <string name="bt_location_request_usage">È necessario attivare Bluetooth e Posizione di questo dispositivo per accedere al dispositivo BLE</string>
+    <string name="your_email">Email</string>
+    <string name="your_password">Password</string>
+    <string name="register">Registrati</string>
+    <string name="name">Nome</string>
+    <string name="email">Email</string>
+    <string name="email_must_valid">L\'indirizzo email deve essere valido</string>
+    <string name="password">Password</string>
+    <string name="password_must_12_char">Password di almeno 12 caratteri</string>
+    <string name="password_must_contain_special_char_and_number">La password deve contenere caratteri speciali, lettere maiuscole e numeri</string>
+    <string name="registration_success">Utente creato con successo. Si prega di controllare la propria email per verificare l\'account.</string>
+    <string name="confirm_password">Conferma Password</string>
+    <string name="password_must_match">Le password devono corrispondere</string>
+    <string name="i_have_read">Ho letto e accetto la</string>
+    <string name="privacy_policy">Politica sulla Privacy</string>
+    <string name="submit">Invia</string>
+    <string name="already_have_an_account">Hai già un account?</string>
+    <string name="login_here">Accedi qui</string>
+    <string name="handphone_number">Numero di Telefono</string>
+    <string name="phone_must_valid">Il numero di telefono deve essere valido</string>
+    <string name="password_recovery">Recupero Password</string>
+    <string name="forgot_password_enter_email">Inserisci la tua email per recuperare la password</string>
+    <string name="forgot_password">Password Dimenticata?</string>
+    <string name="motorcycle_model">Modelli di Motociclette</string>
+    <string name="choose_motorcycle_model">Scegli Modelli di Motociclette</string>
+    <string name="choose">Scegli</string>
+    <string name="email_cannot_empty">L\'email non può essere vuota!</string>
+    <string name="password_cannot_empty">La password non può essere vuota!</string>
+    <string name="sign_in">Accedi</string>
+    <string name="success_reset_password">Se esiste un utente con quell\'email, è stato inviato un link per reimpostare la password</string>
+    <string name="failed_reset_password">Reimpostazione password non riuscita</string>
+    <string name="logout">Disconnetti</string>
+    
+    <!-- New hardcoded strings to extract -->
+    <string name="connect_your_bike">Collega la Tua Moto</string>
+    <string name="find_nearby_bikes">Trova Moto Vicine</string>
+    <string name="my_garage">Il Mio Garage</string>
+    <string name="select_your_registered_motorcycle">Seleziona la Tua Motocicletta Registrata</string>
+    <string name="add_new">Aggiungi Nuova</string>
+    <string name="streaming">Streaming</string>
+    <string name="start_stream">Avvia Stream</string>
+    <string name="please_start_streaming_first">Avviare prima lo streaming</string>
+    <string name="engine_data">DATI MOTORE</string>
+    <string name="engine_info">INFO MOTORE</string>
+    <string name="engine_diagnose">DIAGNOSI MOTORE</string>
+    <string name="idle_adjustment">REGOLAZIONE MINIMO</string>
+    <string name="close_connection">Chiudi Connessione</string>
+    <string name="apply">Applica</string>
+    <string name="save_records">SALVA REGISTRAZIONI</string>
+    <string name="save">SALVA</string>
+    <string name="successfully_connected">Connesso con Successo</string>
+    <string name="please_fill_all_fields">Compila tutti i campi</string>
+    <string name="log_file">File di Log</string>
+    <string name="clear_log">Cancella Log</string>
+    <string name="no_fault">NESSUN GUASTO</string>
+    <string name="device_already_saved">Dispositivo già salvato</string>
+    <string name="please_select_motorcycle_type">Seleziona il tipo di motocicletta</string>
+    <string name="account_registration_success">Registrazione dell\'account riuscita, controlla la tua email per verificare l\'account</string>
+    <string name="show_dialog">Mostra Dialogo</string>
+    <string name="betamotor_app_logo">Logo App Betamotor</string>
+    <string name="click_to_see_logs">Clicca per vedere i log</string>
+    <string name="doesnt_have_account">Non hai un account?</string>
+    <string name="register_here">Registrati Qui</string>
+    <string name="vin">VIN</string>
+    <string name="search">Cerca</string>
+    <string name="id">ID</string>
+    
+    <!-- Engine data labels -->
+    <string name="rpm">RPM</string>
+    <string name="throttle">ACCELERATORE</string>
+    <string name="spark_adv">ANTICIPO ACCENSIONE</string>
+    <string name="engine_temp">TEMP. MOTORE</string>
+    <string name="air_temp">TEMP. ARIA</string>
+    <string name="atm_pressure">PRESSIONE ATM.</string>
+    <string name="op_time">TEMPO OP.</string>
+    <string name="battery_voltage">TENSIONE BATTERIA</string>
+    <string name="ecu_drw">ECU DRW</string>
+    <string name="ecu_hw">ECU HW</string>
+    <string name="ecu_sw">ECU SW.</string>
+    <string name="calibration">CALIBRAZIONE</string>
+    <string name="homol_code">CODICE OMOL.</string>
+    <string name="idle_target">OBIETTIVO MINIMO</string>
+    
+    <!-- Units -->
+    <string name="rpm_unit">rpm</string>
+    <string name="percent_unit">%</string>
+    <string name="degree_unit">°</string>
+    <string name="celsius_unit">°C</string>
+    <string name="mbar_unit">Mbar</string>
+    <string name="hour_unit">h</string>
+    <string name="volt_unit">V</string>
+    
+    <string name="recording">Registrazione</string>
+    <string name="start_record">Avvia Registrazione</string>
+    <string name="refresh">Aggiornare</string>
+    <string name="back_button">Pulsante Indietro</string>
+    <string name="share_file">Condividi file</string>
+</resources>

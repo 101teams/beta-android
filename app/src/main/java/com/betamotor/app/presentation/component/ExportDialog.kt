@@ -23,7 +23,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
+import com.betamotor.app.R
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
@@ -59,7 +61,7 @@ fun ExportDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                 Text(
-                    text = "SAVE RECORDS",
+                    text = stringResource(R.string.save_records),
                     modifier = Modifier,
                     style = MaterialTheme.typography.h4,
                     fontSize = 24.sp,
@@ -79,7 +81,7 @@ fun ExportDialog(
                         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp,),
                     ) {
                         Text(
-                            text = "SAVE",
+                            text = stringResource(R.string.save),
                             fontSize = 20.sp,
                             style = MaterialTheme.typography.button,
                             color = White,
@@ -116,7 +118,7 @@ fun generateCSV(context: Context, csvData: MutableState<MutableList<String>>) {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share File"))
+        context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_file)))
     } catch (e: IOException) {
         e.printStackTrace()
     }

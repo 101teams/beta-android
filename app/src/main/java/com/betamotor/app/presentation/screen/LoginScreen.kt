@@ -155,7 +155,7 @@ fun LoginScreen(
             ) {
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor_vertical),
-                    contentDescription = "Betamotor App Logo",
+                    contentDescription = stringResource(R.string.betamotor_app_logo),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
@@ -237,7 +237,7 @@ fun LoginScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "Doesn't have account?",
+                    stringResource(R.string.doesnt_have_account),
                     style = TextStyle(
                         color = White,
                         fontSize = 14.sp,
@@ -247,7 +247,7 @@ fun LoginScreen(
 
                 TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
                     Text(
-                        "Register Here",
+                        stringResource(R.string.register_here),
                         style = TextStyle(
                             color = White,
                             fontSize = 14.sp,

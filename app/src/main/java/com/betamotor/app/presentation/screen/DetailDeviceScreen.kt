@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -135,7 +136,7 @@ fun DetailDeviceScreen(
         }
     }
 
-    val tabs = listOf("Data", "Info", "Tune", "Diag")
+    val tabs = listOf(stringResource(R.string.engine_data), stringResource(R.string.engine_info), stringResource(R.string.idle_adjustment), stringResource(R.string.engine_diagnose))
     val icons = listOf(
         painterResource(id = R.drawable.ic_tab1),
         painterResource(id = R.drawable.ic_tab2),
@@ -178,7 +179,7 @@ fun DetailDeviceScreen(
             ) {
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor),
-                    contentDescription = "",
+                    contentDescription = stringResource(R.string.betamotor_app_logo),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(100.dp)
@@ -423,16 +424,16 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("ENGINE DATA", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.engine_data), style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(24.dp))
-                    DetailDataItem(title = "RPM", value = rpm, suffix = "rpm")
-                    DetailDataItem(title = "THROTTLE", value = gasPosition, suffix = "%")
-                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark, suffix = "°")
-                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant, suffix = "°C")
-                    DetailDataItem(title = "AIR TEMP.", value = airTemp, suffix = "°C")
-                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure, suffix = "Mbar")
-                    DetailDataItem(title = "OP. TIME", value = operatingHours, suffix = "h")
-                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage, suffix = "V")
+                    DetailDataItem(title = stringResource(R.string.rpm), value = rpm, suffix = stringResource(R.string.rpm_unit))
+                    DetailDataItem(title = stringResource(R.string.throttle), value = gasPosition, suffix = stringResource(R.string.percent_unit))
+                    DetailDataItem(title = stringResource(R.string.spark_adv), value = actuatedSpark, suffix = stringResource(R.string.degree_unit))
+                    DetailDataItem(title = stringResource(R.string.engine_temp), value = engineCoolant, suffix = stringResource(R.string.celsius_unit))
+                    DetailDataItem(title = stringResource(R.string.air_temp), value = airTemp, suffix = stringResource(R.string.celsius_unit))
+                    DetailDataItem(title = stringResource(R.string.atm_pressure), value = atmospherePressure, suffix = stringResource(R.string.mbar_unit))
+                    DetailDataItem(title = stringResource(R.string.op_time), value = operatingHours, suffix = stringResource(R.string.hour_unit))
+                    DetailDataItem(title = stringResource(R.string.battery_voltage), value = batteryVoltage, suffix = stringResource(R.string.volt_unit))
                 }
             }
 
@@ -451,7 +452,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                 colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent,),
                 border = BorderStroke(1.dp, Color.Red),
             ) {
-                Text("Close Connection", style = MaterialTheme.typography.button, fontSize = 18.sp, color = Color.Red)
+                Text(stringResource(R.string.close_connection), style = MaterialTheme.typography.button, fontSize = 18.sp, color = Color.Red)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -488,7 +489,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                                     .width(52.dp),
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(if (isStreaming.value) "Streaming" else "Start Stream", style = MaterialTheme.typography.button)
+                            Text(if (isStreaming.value) stringResource(R.string.streaming) else stringResource(R.string.start_stream), style = MaterialTheme.typography.button)
                         }
                     }
 
@@ -498,7 +499,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                             indication = null
                         ) {
                             if (!isStreaming.value) {
-                                Toast.makeText(context, "Please start streaming first", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.please_start_streaming_first), Toast.LENGTH_SHORT).show()
                                 return@clickable
                             }
 
@@ -520,7 +521,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                                     .width(52.dp),
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(if (isRecording) "Recording" else "Start Record", style = MaterialTheme.typography.button)
+                            Text(if (isRecording) stringResource(R.string.recording) else stringResource(R.string.start_record), style = MaterialTheme.typography.button)
                         }
                     }
                 }
@@ -681,14 +682,14 @@ fun page2(btViewModel: BluetoothViewModel, context: Context, prefManager: PrefMa
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("ENGINE INFO", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.engine_info), style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(24.dp))
-                DetailDataItem(title = "VIN", value = vin.value, suffix = "")
-                DetailDataItem(title = "ECU DRW", value = ecuDRW.value, suffix = "")
-                DetailDataItem(title = "ECU HW", value = ecuHW.value, suffix = "")
-                DetailDataItem(title = "ECU SW.", value = ecuSW.value, suffix = "")
-                DetailDataItem(title = "CALIBRATION", value = calibration.value, suffix = "")
-                DetailDataItem(title = "HOMOL. CODE", value = homologation.value, suffix = "")
+                DetailDataItem(title = stringResource(R.string.vin), value = vin.value, suffix = "")
+                DetailDataItem(title = stringResource(R.string.ecu_drw), value = ecuDRW.value, suffix = "")
+                DetailDataItem(title = stringResource(R.string.ecu_hw), value = ecuHW.value, suffix = "")
+                DetailDataItem(title = stringResource(R.string.ecu_sw), value = ecuSW.value, suffix = "")
+                DetailDataItem(title = stringResource(R.string.calibration), value = calibration.value, suffix = "")
+                DetailDataItem(title = stringResource(R.string.homol_code), value = homologation.value, suffix = "")
             }
         }
     }
@@ -771,9 +772,9 @@ fun page3(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("IDLE ADJUSTMENT", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.idle_adjustment), style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(24.dp))
-                DetailDataItem(title = "IDLE TARGET", value = (tuneOffset.value).toString(), suffix = "rpm")
+                DetailDataItem(title = stringResource(R.string.idle_target), value = (tuneOffset.value).toString(), suffix = stringResource(R.string.rpm_unit))
             }
         }
 
@@ -870,7 +871,7 @@ fun page3(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                 modifier = Modifier.padding(top = 8.dp, bottom = 8.dp,),
             ) {
                 Text(
-                    text = "Apply",
+                    text = stringResource(R.string.apply),
                     fontSize = 20.sp,
                     style = MaterialTheme.typography.button,
                 )
@@ -974,7 +975,7 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                             getBit(byte2, 1).toString() == "0" &&
                             getBit(byte2, 2).toString() == "0" &&
                             getBit(byte2, 3).toString() == "0") {
-                            value += "NO FAULT"
+                            value += context.getString(R.string.no_fault)
                         } else {
                             for (n in 7 downTo 0) {
                                 value += getBit(byte2, n).toString()
@@ -1046,7 +1047,7 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                     .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("ENGINE DIAGNOSE", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.engine_diagnose), style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(24.dp))
                 Image(
                     bitmap = ImageBitmap.imageResource(if (imgEngineOn.value) R.drawable.ic_engine_on else R.drawable.ic_engine_off),

@@ -37,4 +37,69 @@
     <string name="success_reset_password">If a user with that email exists, a password reset link has been sent</string>
     <string name="failed_reset_password">Password not resetting</string>
     <string name="logout">Logout</string>
+    
+    <!-- New hardcoded strings to extract -->
+    <string name="connect_your_bike">Connect Your Bike</string>
+    <string name="find_nearby_bikes">Find Nearby Bikes</string>
+    <string name="my_garage">My Garage</string>
+    <string name="select_your_registered_motorcycle">Select Your Registered Motorcycle</string>
+    <string name="add_new">Add New</string>
+    <string name="streaming">Streaming</string>
+    <string name="start_stream">Start Stream</string>
+    <string name="please_start_streaming_first">Please start streaming first</string>
+    <string name="engine_data">ENGINE DATA</string>
+    <string name="engine_info">ENGINE INFO</string>
+    <string name="engine_diagnose">ENGINE DIAGNOSE</string>
+    <string name="idle_adjustment">IDLE ADJUSTMENT</string>
+    <string name="close_connection">Close Connection</string>
+    <string name="apply">Apply</string>
+    <string name="save_records">SAVE RECORDS</string>
+    <string name="save">SAVE</string>
+    <string name="successfully_connected">Successfully Connected</string>
+    <string name="please_fill_all_fields">Please fill all fields</string>
+    <string name="log_file">Log File</string>
+    <string name="clear_log">Clear Log</string>
+    <string name="no_fault">NO FAULT</string>
+    <string name="device_already_saved">Device already saved</string>
+    <string name="please_select_motorcycle_type">Please select motorcycle type</string>
+    <string name="account_registration_success">Account registration success, please check your email to verify account</string>
+    <string name="show_dialog">Show Dialog</string>
+    <string name="betamotor_app_logo">Betamotor App Logo</string>
+    <string name="click_to_see_logs">Click to see logs</string>
+    <string name="doesnt_have_account">Doesn\'t have account?</string>
+    <string name="register_here">Register Here</string>
+    <string name="vin">VIN</string>
+    <string name="search">Search</string>
+    <string name="id">ID</string>
+    
+    <!-- Engine data labels -->
+    <string name="rpm">RPM</string>
+    <string name="throttle">THROTTLE</string>
+    <string name="spark_adv">SPARK ADV</string>
+    <string name="engine_temp">ENGINE TEMP.</string>
+    <string name="air_temp">AIR TEMP.</string>
+    <string name="atm_pressure">ATM. PRESSURE</string>
+    <string name="op_time">OP. TIME</string>
+    <string name="battery_voltage">BATTERY VOLTAGE</string>
+    <string name="ecu_drw">ECU DRW</string>
+    <string name="ecu_hw">ECU HW</string>
+    <string name="ecu_sw">ECU SW.</string>
+    <string name="calibration">CALIBRATION</string>
+    <string name="homol_code">HOMOL. CODE</string>
+    <string name="idle_target">IDLE TARGET</string>
+    
+    <!-- Units -->
+    <string name="rpm_unit">rpm</string>
+    <string name="percent_unit">%</string>
+    <string name="degree_unit">°</string>
+    <string name="celsius_unit">°C</string>
+    <string name="mbar_unit">Mbar</string>
+    <string name="hour_unit">h</string>
+    <string name="volt_unit">V</string>
+    
+    <string name="recording">Recording</string>
+    <string name="start_record">Start Record</string>
+    <string name="refresh">Refresh</string>
+    <string name="back_button">Back button</string>
+    <string name="share_file">Share File</string>
 </resources>

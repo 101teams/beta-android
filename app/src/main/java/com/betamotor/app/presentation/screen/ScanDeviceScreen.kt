@@ -294,7 +294,7 @@ fun ScanDeviceScreen(
                 val motorcycleTypeId = prefManager.getMotorcycleTypeId()
 
                 if (motorcycleTypeId == null) {
-                    Toast.makeText(context, "Please select motorcycle type", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.please_select_motorcycle_type), Toast.LENGTH_SHORT).show()
 
                     navController.navigate(Screen.MotorcycleTypes.route) {
                         popUpTo(navController.graph.id) {
@@ -312,7 +312,7 @@ fun ScanDeviceScreen(
                     val macAddressAlreadyUsed = savedMotorcycles.any { it.macAddress == selectedDevice.value?.macAddress }
 
                     if (deviceIdAlreadyUsed || macAddressAlreadyUsed) {
-                        Toast.makeText(context, "Device already saved", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.device_already_saved), Toast.LENGTH_SHORT).show()
                         prefManager.setSelectedMotorcycleId(form.deviceId)
                         selectedDevice.value?.let { prefManager.setMacAddress(it.macAddress) }
 
@@ -403,12 +403,12 @@ fun BluetoothDeviceList(
                     modifier = Modifier
                         .size(24.dp),
                     bitmap = ImageBitmap.imageResource(R.drawable.ic_arrow_back_white),
-                    contentDescription = "back button"
+                    contentDescription = stringResource(R.string.back_button)
                 )
             }
 
             Text(
-                text = "Find Nearby Bikes",
+                text = stringResource(R.string.find_nearby_bikes),
                 modifier = Modifier,
                 style = MaterialTheme.typography.h4,
                 fontSize = 20.sp,
@@ -436,7 +436,7 @@ fun BluetoothDeviceList(
 
                     if (isScanning) { LoadingIndicator() }
                     else Text(
-                        "Refresh",
+                        stringResource(R.string.refresh),
                         style = MaterialTheme.typography.button,
                         modifier = Modifier
                             .clickable { startScan() }

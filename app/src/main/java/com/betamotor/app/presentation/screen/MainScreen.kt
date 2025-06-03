@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -124,7 +125,7 @@ fun MainScreen(
             ) {
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor_vertical),
-                    contentDescription = "Betamotor App Logo",
+                    contentDescription = stringResource(R.string.betamotor_app_logo),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
@@ -152,7 +153,7 @@ fun MainScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Connect Your Bike",
+                        text = stringResource(R.string.connect_your_bike),
                         fontSize = 20.sp,
                         style = MaterialTheme.typography.button,
                         color = White,

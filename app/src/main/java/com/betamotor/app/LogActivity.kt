@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -57,7 +58,7 @@ fun LogScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 24.dp),
-                text = "Log File",
+                text = stringResource(R.string.log_file),
                 style = TextStyle(fontSize = 24.sp),
                 textAlign = TextAlign.Center,
             )
@@ -91,7 +92,7 @@ fun LogScreen() {
                 logData.value = mutableListOf()
             }
         ) {
-            Text("Clear Log")
+            Text(stringResource(R.string.clear_log))
         }
     }
 }

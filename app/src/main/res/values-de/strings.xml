@@ -1,0 +1,105 @@
+<resources>
+    <string name="app_name">Betamotor_28Apr2025</string>
+    <string name="connection_timeout">Verbindungs-Timeout</string>
+    <string name="nearby_bike">Motorräder in der Nähe</string>
+    <string name="no_name">Kein Name</string>
+    <string name="done">Fertig</string>
+    <string name="bt_location_request">Achtung</string>
+    <string name="bt_location_request_usage">Sie müssen Bluetooth und Standort dieses Geräts aktivieren, um auf das BLE-Gerät zugreifen zu können</string>
+    <string name="your_email">E-Mail</string>
+    <string name="your_password">Passwort</string>
+    <string name="register">Registrieren</string>
+    <string name="name">Name</string>
+    <string name="email">E-Mail</string>
+    <string name="email_must_valid">E-Mail-Adresse muss gültig sein</string>
+    <string name="password">Passwort</string>
+    <string name="password_must_12_char">Passwort mindestens 12 Zeichen</string>
+    <string name="password_must_contain_special_char_and_number">Passwort muss Sonderzeichen, Großbuchstaben und Zahlen enthalten</string>
+    <string name="registration_success">Benutzer erfolgreich erstellt. Bitte überprüfen Sie Ihre E-Mail, um Ihr Konto zu verifizieren.</string>
+    <string name="confirm_password">Passwort Bestätigen</string>
+    <string name="password_must_match">Passwörter müssen übereinstimmen</string>
+    <string name="i_have_read">Ich habe die</string>
+    <string name="privacy_policy">Datenschutzrichtlinie gelesen und akzeptiere sie</string>
+    <string name="submit">Absenden</string>
+    <string name="already_have_an_account">Haben Sie bereits ein Konto?</string>
+    <string name="login_here">Hier einloggen</string>
+    <string name="handphone_number">Telefonnummer</string>
+    <string name="phone_must_valid">Telefonnummer muss gültig sein</string>
+    <string name="password_recovery">Passwort-Wiederherstellung</string>
+    <string name="forgot_password_enter_email">Bitte geben Sie Ihre E-Mail ein, um Ihr Passwort wiederherzustellen</string>
+    <string name="forgot_password">Passwort Vergessen?</string>
+    <string name="motorcycle_model">Motorradmodelle</string>
+    <string name="choose_motorcycle_model">Motorradmodelle Wählen</string>
+    <string name="choose">Wählen</string>
+    <string name="email_cannot_empty">E-Mail darf nicht leer sein!</string>
+    <string name="password_cannot_empty">Passwort darf nicht leer sein!</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="success_reset_password">Falls ein Benutzer mit dieser E-Mail existiert, wurde ein Passwort-Reset-Link gesendet</string>
+    <string name="failed_reset_password">Passwort-Reset fehlgeschlagen</string>
+    <string name="logout">Abmelden</string>
+    
+    <!-- New hardcoded strings to extract -->
+    <string name="connect_your_bike">Verbinden Sie Ihr Motorrad</string>
+    <string name="find_nearby_bikes">Motorräder in der Nähe Finden</string>
+    <string name="my_garage">Meine Garage</string>
+    <string name="select_your_registered_motorcycle">Wählen Sie Ihr Registriertes Motorrad</string>
+    <string name="add_new">Neu Hinzufügen</string>
+    <string name="streaming">Streaming</string>
+    <string name="start_stream">Stream Starten</string>
+    <string name="please_start_streaming_first">Bitte zuerst Streaming starten</string>
+    <string name="engine_data">MOTORDATEN</string>
+    <string name="engine_info">MOTORINFO</string>
+    <string name="engine_diagnose">MOTORDIAGNOSE</string>
+    <string name="idle_adjustment">LEERLAUF-EINSTELLUNG</string>
+    <string name="close_connection">Verbindung Schließen</string>
+    <string name="apply">Anwenden</string>
+    <string name="save_records">AUFZEICHNUNGEN SPEICHERN</string>
+    <string name="save">SPEICHERN</string>
+    <string name="successfully_connected">Erfolgreich Verbunden</string>
+    <string name="please_fill_all_fields">Bitte alle Felder ausfüllen</string>
+    <string name="log_file">Log-Datei</string>
+    <string name="clear_log">Log Löschen</string>
+    <string name="no_fault">KEIN FEHLER</string>
+    <string name="device_already_saved">Gerät bereits gespeichert</string>
+    <string name="please_select_motorcycle_type">Bitte Motorradtyp auswählen</string>
+    <string name="account_registration_success">Konto-Registrierung erfolgreich, bitte überprüfen Sie Ihre E-Mail zur Verifizierung</string>
+    <string name="show_dialog">Dialog Anzeigen</string>
+    <string name="betamotor_app_logo">Betamotor App Logo</string>
+    <string name="click_to_see_logs">Klicken Sie, um Logs zu sehen</string>
+    <string name="doesnt_have_account">Haben Sie kein Konto?</string>
+    <string name="register_here">Hier Registrieren</string>
+    <string name="vin">VIN</string>
+    <string name="search">Suchen</string>
+    <string name="id">ID</string>
+    
+    <!-- Engine data labels -->
+    <string name="rpm">U/MIN</string>
+    <string name="throttle">DROSSELKLAPPE</string>
+    <string name="spark_adv">ZÜNDVORVERSTELLUNG</string>
+    <string name="engine_temp">MOTORTEMP.</string>
+    <string name="air_temp">LUFTTEMP.</string>
+    <string name="atm_pressure">ATM. DRUCK</string>
+    <string name="op_time">BETR. ZEIT</string>
+    <string name="battery_voltage">BATTERIESPANNUNG</string>
+    <string name="ecu_drw">ECU DRW</string>
+    <string name="ecu_hw">ECU HW</string>
+    <string name="ecu_sw">ECU SW.</string>
+    <string name="calibration">KALIBRIERUNG</string>
+    <string name="homol_code">HOMOL. CODE</string>
+    <string name="idle_target">LEERLAUF-ZIEL</string>
+    
+    <!-- Units -->
+    <string name="rpm_unit">U/min</string>
+    <string name="percent_unit">%</string>
+    <string name="degree_unit">°</string>
+    <string name="celsius_unit">°C</string>
+    <string name="mbar_unit">mbar</string>
+    <string name="hour_unit">h</string>
+    <string name="volt_unit">V</string>
+    
+    <string name="recording">Aufzeichnung</string>
+    <string name="start_record">Aufzeichnung Starten</string>
+    <string name="refresh">Aktualisieren</string>
+    <string name="back_button">Zurück-Button</string>
+    <string name="share_file">Datei teilen</string>
+</resources>

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -90,7 +91,7 @@ fun SplashScreen(
             ) {
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor_horizontal),
-                    contentDescription = "Betamotor App Logo",
+                    contentDescription = stringResource(R.string.betamotor_app_logo),
                     modifier = Modifier
                                 .fillMaxWidth()
                                 .height(72.dp)

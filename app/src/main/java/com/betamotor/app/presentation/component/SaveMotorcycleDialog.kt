@@ -31,6 +31,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
+import com.betamotor.app.R
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.Green
 import com.betamotor.app.theme.White
@@ -65,7 +67,7 @@ fun SaveMotorcycleDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "Successfully Connected",
+                    text = stringResource(R.string.successfully_connected),
                     modifier = Modifier,
                     style = MaterialTheme.typography.h4,
                     fontSize = 24.sp,
@@ -75,7 +77,7 @@ fun SaveMotorcycleDialog(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Name", style = TextStyle(fontSize = 16.sp, color = White), modifier = Modifier.width(90.dp))
+                    Text(stringResource(R.string.name), style = TextStyle(fontSize = 16.sp, color = White), modifier = Modifier.width(90.dp))
                     Spacer(modifier = Modifier.width(24.dp))
                     Input(placeholder = "", binding = name, inputTextStyle = TextStyle(color = White))
                 }
@@ -83,7 +85,7 @@ fun SaveMotorcycleDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("ID", style = TextStyle(fontSize = 16.sp, color = White), modifier = Modifier.width(90.dp))
+                    Text(stringResource(R.string.id), style = TextStyle(fontSize = 16.sp, color = White), modifier = Modifier.width(90.dp))
                     Spacer(modifier = Modifier.width(24.dp))
                     Input(placeholder = "", binding = deviceId, inputTextStyle = TextStyle(color = White))
                 }
@@ -91,7 +93,7 @@ fun SaveMotorcycleDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    Text("Password", style = TextStyle(fontSize = 16.sp, color = White), modifier = Modifier.width(90.dp))
+                    Text(stringResource(R.string.password), style = TextStyle(fontSize = 16.sp, color = White), modifier = Modifier.width(90.dp))
                     Spacer(modifier = Modifier.width(24.dp))
                     Input(placeholder = "", binding = password, inputTextStyle = TextStyle(color = White))
                 }
@@ -104,7 +106,7 @@ fun SaveMotorcycleDialog(
                     .padding(vertical = 16.dp, horizontal = 10.dp)
                     .clickable {
                         if (name.value.isEmpty() || deviceId.value.isEmpty() || password.value.isEmpty()) {
-                            Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.please_fill_all_fields), Toast.LENGTH_SHORT).show()
                             return@clickable
                         }
 
@@ -112,7 +114,7 @@ fun SaveMotorcycleDialog(
                     },
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Text("Save", style = MaterialTheme.typography.button, color = White, fontSize = 20.sp)
+                    Text(stringResource(R.string.save), style = MaterialTheme.typography.button, color = White, fontSize = 20.sp)
                 }
             }
         }
@@ -130,7 +132,7 @@ fun SaveMotorcycleDialogPreview() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Button(onClick = { openDialog.value = true }) {
-                Text(text = "Show Dialog")
+                Text(text = stringResource(R.string.show_dialog))
             }
 
             SaveMotorcycleDialog(openDialog = openDialog, onSave = {})

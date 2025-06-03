@@ -179,7 +179,7 @@ fun MyMotorcycleScreen(
                 horizontalArrangement = Arrangement.Center,
             ) {
                 Text(
-                    text = "My Garage",
+                    text = stringResource(R.string.my_garage),
                     modifier = Modifier,
                     style = MaterialTheme.typography.h4,
                     fontSize = 20.sp,
@@ -194,13 +194,13 @@ fun MyMotorcycleScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "Select Your Registered Motorcycle",
+                    text = stringResource(R.string.select_your_registered_motorcycle),
                     style = MaterialTheme.typography.subtitle1
                 )
 
                 if (isLoading.value) { LoadingIndicator() }
                 else Text(
-                    "Add New",
+                    stringResource(R.string.add_new),
                     style = MaterialTheme.typography.button,
                     modifier = Modifier
                         .clickable {
@@ -216,7 +216,7 @@ fun MyMotorcycleScreen(
                 Input(
                     modifier = Modifier,
                     field = null,
-                    placeholder = "VIN",
+                    placeholder = stringResource(R.string.vin),
                     binding = vinInput,
                     disabled = false,
                     fillMaxWidth = false,
@@ -236,7 +236,7 @@ fun MyMotorcycleScreen(
                 IconButton(onClick = {}) {
                     Icon(
                         painter = painterResource(id = R.drawable.search),
-                        contentDescription = "Search",
+                        contentDescription = stringResource(R.string.search),
                         tint = White,
                         modifier = Modifier.size(24.dp)
                     )
