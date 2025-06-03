@@ -102,4 +102,13 @@
     <string name="refresh">Aggiornare</string>
     <string name="back_button">Pulsante Indietro</string>
     <string name="share_file">Condividi file</string>
+    <string name="setting">Impostazioni</string>
+    <string name="language">Lingua</string>
+    <string name="select_language">Seleziona lingua</string>
+    <string name="english">Inglese</string>
+    <string name="french">Francese</string>
+    <string name="german">Tedesco</string>
+    <string name="italian">Italiano</string>
+    <string name="spanish">Spagnolo</string>
+    <string name="system_default">Predefinito di sistema</string>
 </resources>

@@ -10,6 +10,7 @@ sealed class Screen(val route: String) {
     object Main: Screen("main")
     object ScanDevice: Screen("scan-device")
     object DetailDevice: Screen("detail-device")
+    object Setting: Screen("setting")
 
     fun withArgs(vararg args: String): String {
         return buildString {

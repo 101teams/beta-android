@@ -16,8 +16,15 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        resConfigs("en", "it", "fr", "es", "de")
+    }
+
+    bundle {
+        language {
+            // Disable automatic language splitting for AAB to include all languages in base APK
+            enableSplit = false
+        }
     }
 
     buildTypes {

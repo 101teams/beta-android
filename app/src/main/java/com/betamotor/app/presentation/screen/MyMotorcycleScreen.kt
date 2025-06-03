@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -176,14 +177,27 @@ fun MyMotorcycleScreen(
                     .padding(24.dp)
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Spacer(modifier = Modifier.width(24.dp))
+
                 Text(
                     text = stringResource(R.string.my_garage),
                     modifier = Modifier,
                     style = MaterialTheme.typography.h4,
                     fontSize = 20.sp,
                 )
+
+                IconButton(onClick = {
+                    navController.navigate(Screen.Setting.route)
+                }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.cog),
+                        contentDescription = stringResource(R.string.setting),
+                        tint = White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             Row(
@@ -198,10 +212,12 @@ fun MyMotorcycleScreen(
                     style = MaterialTheme.typography.subtitle1
                 )
 
+                Spacer(modifier = Modifier.width(12.dp))
+
                 if (isLoading.value) { LoadingIndicator() }
                 else Text(
                     stringResource(R.string.add_new),
-                    style = MaterialTheme.typography.button,
+                    style = MaterialTheme.typography.button.copy(textAlign = TextAlign.Center),
                     modifier = Modifier
                         .clickable {
                             logger.writeLog("Add New Motorcycle Clicked")

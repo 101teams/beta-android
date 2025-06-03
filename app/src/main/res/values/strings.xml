@@ -102,4 +102,13 @@
     <string name="refresh">Refresh</string>
     <string name="back_button">Back button</string>
     <string name="share_file">Share File</string>
+    <string name="setting">Setting</string>
+    <string name="language">Language</string>
+    <string name="select_language">Select Language</string>
+    <string name="english">English</string>
+    <string name="french">French</string>
+    <string name="german">German</string>
+    <string name="italian">Italian</string>
+    <string name="spanish">Spanish</string>
+    <string name="system_default">System Default</string>
 </resources>

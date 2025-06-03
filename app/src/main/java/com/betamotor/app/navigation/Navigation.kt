@@ -17,6 +17,7 @@ import com.betamotor.app.presentation.screen.MotorcycleTypesScreen
 import com.betamotor.app.presentation.screen.MyMotorcycleScreen
 import com.betamotor.app.presentation.screen.RegisterScreen
 import com.betamotor.app.presentation.screen.ScanDeviceScreen
+import com.betamotor.app.presentation.screen.SettingScreen
 import com.betamotor.app.presentation.screen.SplashScreen
 
 @Composable
@@ -145,6 +146,16 @@ fun Navigation() {
             popEnterTransition = popEnterTransition
         ) {
             DetailDeviceScreen(navController)
+        }
+
+        composable(
+            route = Screen.Setting.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            SettingScreen(navController)
         }
     }
 }
