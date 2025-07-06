@@ -37,6 +37,7 @@
     <string name="success_reset_password">Si existe un usuario con ese email, se ha enviado un enlace de restablecimiento de contraseña</string>
     <string name="failed_reset_password">Restablecimiento de contraseña fallido</string>
     <string name="logout">Cerrar Sesión</string>
+    <string name="tracking">Seguimiento</string>
     
     <!-- New hardcoded strings to extract -->
     <string name="connect_your_bike">Conecta Tu Moto</string>
@@ -101,6 +102,7 @@
     <string name="start_record">Iniciar Grabación</string>
     <string name="refresh">Actualizar</string>
     <string name="back_button">Botón Atrás</string>
+    <string name="back">Atrás</string>
     <string name="share_file">Compartir archivo</string>
     <string name="setting">Ajustes</string>
     <string name="language">Idioma</string>

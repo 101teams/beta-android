@@ -37,6 +37,7 @@
     <string name="success_reset_password">Si un utilisateur avec cet email existe, un lien de réinitialisation de mot de passe a été envoyé</string>
     <string name="failed_reset_password">Réinitialisation du mot de passe échouée</string>
     <string name="logout">Déconnexion</string>
+    <string name="tracking">Suivi</string>
     
     <!-- New hardcoded strings to extract -->
     <string name="connect_your_bike">Connectez Votre Moto</string>
@@ -101,6 +102,7 @@
     <string name="start_record">Démarrer l\'Enregistrement</string>
     <string name="refresh">Actualiser</string>
     <string name="back_button">Bouton retour</string>
+    <string name="back">Retour</string>
     <string name="share_file">Partager le fichier</string>
     <string name="setting">Paramètres</string>
     <string name="language">Langue</string>

@@ -176,14 +176,44 @@ fun DetailDeviceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Spacer(modifier = Modifier.height(1.dp).weight(1f))
+
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor),
                     contentDescription = stringResource(R.string.betamotor_app_logo),
                     modifier = Modifier
-                        .fillMaxWidth()
                         .height(100.dp)
+                        .weight(1f)
                 )
+
+                Button(onClick = {
+                    navController.navigate(Screen.TrackingList.route)
+                }, modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 0.dp)
+                    .weight(1f),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Image(
+                            bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
+                            contentDescription = stringResource(R.string.tracking),
+                            modifier = Modifier
+                                .height(42.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.tracking),
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                color = White,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            modifier = Modifier
+                        )
+                    }
+                }
             }
 
             Scaffold(
@@ -1067,6 +1097,31 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                     }
                 }
 //                DetailDataItem(title = tvTitle.value, value = tvData.value, suffix = "")
+            }
+        }
+    }
+}
+
+@Composable
+fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Context, navController: NavController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(all = 26.dp)
+            .background(color = Color.Transparent),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(GrayDark)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 28.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
             }
         }
     }

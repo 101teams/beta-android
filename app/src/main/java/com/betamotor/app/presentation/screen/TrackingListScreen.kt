@@ -82,12 +82,11 @@ import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun MyMotorcycleScreen(
+fun TrackingListScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
     val logger = LocalLogging(context)
-    val authViewModel = hiltViewModel<AuthViewModel>()
     val viewModel = hiltViewModel<MotorcycleViewModel>()
     val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
     val isLoading = viewModel.isLoading.collectAsState()
@@ -181,55 +180,43 @@ fun MyMotorcycleScreen(
                     .padding(24.dp)
                     .fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Center,
             ) {
                 Spacer(modifier = Modifier.width(24.dp))
 
                 Text(
-                    text = stringResource(R.string.my_garage),
+                    text = stringResource(R.string.tracking),
                     modifier = Modifier,
                     style = MaterialTheme.typography.h4,
                     fontSize = 20.sp,
                 )
-
-                IconButton(onClick = {
-                    navController.navigate(Screen.Setting.route)
-                }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.cog),
-                        contentDescription = stringResource(R.string.setting),
-                        tint = White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
             }
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = stringResource(R.string.select_your_registered_motorcycle),
-                    style = MaterialTheme.typography.subtitle1
-                )
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                if (isLoading.value) { LoadingIndicator() }
-                else Text(
-                    stringResource(R.string.add_new),
-                    style = MaterialTheme.typography.button.copy(textAlign = TextAlign.Center),
-                    modifier = Modifier
-                        .clickable {
-                            logger.writeLog("Add New Motorcycle Clicked")
-                            navController.navigate(Screen.MotorcycleTypes.route)
-                        }
-                        .background(color = Green, shape = RoundedCornerShape(4.dp))
-                        .padding(vertical = 6.dp, horizontal = 12.dp)
-                )
+            Button(onClick = {
+                navController.popBackStack()
+            }, modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    Image(
+                        bitmap = ImageBitmap.imageResource(R.drawable.ic_arrow_back_white),
+                        contentDescription = stringResource(R.string.back),
+                        modifier = Modifier
+                            .height(18.dp)
+                            .width(18.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.back),
+                        style = TextStyle(
+                            fontSize = 14.sp,
+                            color = White,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
             }
 
             Row(modifier = Modifier.padding(8.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
@@ -253,14 +240,16 @@ fun MyMotorcycleScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                IconButton(onClick = {}) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.search),
-                        contentDescription = stringResource(R.string.search),
-                        tint = White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Text(
+                    stringResource(R.string.search),
+                    style = MaterialTheme.typography.button.copy(textAlign = TextAlign.Center),
+                    modifier = Modifier
+                        .clickable {
+                            navController.navigate(Screen.DetailDevice.route)
+                        }
+                        .background(color = Green, shape = RoundedCornerShape(8.dp))
+                        .padding(vertical = 18.dp, horizontal = 22.dp)
+                )
             }
 
             if (isLoading.value) {
@@ -346,56 +335,6 @@ fun MyMotorcycleScreen(
                         }
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.weight(1.0f))
-
-            Button(onClick = {
-                navController.navigate(Screen.TrackingList.route)
-            }, modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 0.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(
-                        bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
-                        contentDescription = stringResource(R.string.tracking),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(42.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.tracking),
-                        style = TextStyle(
-                            fontSize = 14.sp,
-                            color = White,
-                            fontWeight = FontWeight.Medium,
-                        ),
-                        modifier = Modifier
-                    )
-                }
-            }
-
-            Button(onClick = {
-                authViewModel.logout()
-                navController.navigate(Screen.Login.route) {
-                    popUpTo(navController.graph.id) {
-                        inclusive = true
-                    }
-                }
-            }, modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 18.dp), colors = ButtonDefaults.buttonColors(backgroundColor = DefaultRed),) {
-                Text(
-                    text = stringResource(R.string.logout),
-                    style = TextStyle(
-                        fontSize = 14.sp,
-                        color = White,
-                        fontWeight = FontWeight.Medium,
-                    ),
-                    modifier = Modifier.padding(16.dp)
-                )
             }
         }
     }
