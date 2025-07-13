@@ -10,4 +10,6 @@ object HttpRoutes {
     const val REGISTER = "${Constants.API_URL}${v1}/register"
     const val FORGOT_PASSWORD = "${Constants.API_URL}${v1}/forgot-password"
     const val LOGOUT = "${Constants.API_URL}${v1}/logout"
+
+    const val GOOGLE_ALTITUDE = "https://maps.googleapis.com/maps/api/elevation/json"
 }

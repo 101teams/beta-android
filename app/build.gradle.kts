@@ -66,6 +66,9 @@ dependencies {
 
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("com.google.dagger:hilt-android:2.48")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation ("com.google.maps.android:maps-compose:4.3.3")
+    implementation ("com.google.android.gms:play-services-maps:18.2.0")
     kapt("com.google.dagger:hilt-compiler:2.48")
     kapt("androidx.hilt:hilt-compiler:1.2.0")
 
@@ -76,6 +79,7 @@ dependencies {
 
     implementation("com.google.accompanist:accompanist-pager:0.28.0")
     implementation("com.google.accompanist:accompanist-pager-indicators:0.28.0")
+    implementation("com.google.accompanist:accompanist-drawablepainter:0.36.0")
 
     implementation("com.google.code.gson:gson:2.10.1")
 

@@ -29,6 +29,7 @@
     <string name="forgot_password_enter_email">Por favor ingresa tu email para recuperar tu contraseña</string>
     <string name="forgot_password">¿Contraseña Olvidada?</string>
     <string name="motorcycle_model">Modelos de Motocicletas</string>
+    <string name="motorcycle_name">Nombre de la motocicleta</string>
     <string name="choose_motorcycle_model">Elegir Modelos de Motocicletas</string>
     <string name="choose">Elegir</string>
     <string name="email_cannot_empty">¡El email no puede estar vacío!</string>
@@ -113,4 +114,7 @@
     <string name="italian">Italiano</string>
     <string name="spanish">Español</string>
     <string name="system_default">Predeterminado del sistema</string>
+
+    <string name="speed">Velocidad</string>
+    <string name="altitude">Altitud</string>
 </resources>

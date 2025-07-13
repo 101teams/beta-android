@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Button
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +65,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.zIndex
+import androidx.compose.material.IconButton
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -72,10 +77,18 @@ import com.betamotor.app.data.constants
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
+import com.betamotor.app.presentation.component.LocationUpdater
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
+import com.betamotor.app.presentation.viewmodel.GoogleViewModel
+import androidx.appcompat.content.res.AppCompatResources.getDrawable
+import androidx.compose.runtime.key
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
+
 import com.betamotor.app.theme.Black
+import com.betamotor.app.theme.DefaultBlue
+import com.betamotor.app.theme.DefaultTextBlack
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.GrayLight
@@ -84,8 +97,16 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
+import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerState
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -178,7 +199,36 @@ fun DetailDeviceScreen(
                     .padding(top = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Spacer(modifier = Modifier.height(1.dp).weight(1f))
+                if (tab.value != 4) {
+                    Spacer(modifier = Modifier.height(1.dp).weight(1f))
+                } else {
+                    Button(onClick = {
+                        tab.value = 0
+                    }, modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = 8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Image(
+                                bitmap = ImageBitmap.imageResource(R.drawable.ic_arrow_back_white),
+                                contentDescription = stringResource(R.string.back),
+                                modifier = Modifier
+                                    .height(18.dp)
+                                    .width(18.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.back),
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    color = White,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
 
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor),
@@ -188,31 +238,35 @@ fun DetailDeviceScreen(
                         .weight(1f)
                 )
 
-                Button(onClick = {
-                    navController.navigate(Screen.TrackingList.route)
-                }, modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 0.dp)
-                    .weight(1f),
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Image(
-                            bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
-                            contentDescription = stringResource(R.string.tracking),
-                            modifier = Modifier
-                                .height(42.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.tracking),
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                color = White,
-                                fontWeight = FontWeight.Medium,
-                            ),
-                            modifier = Modifier
-                        )
+                if (tab.value != 4) {
+                    Button(onClick = {
+                        tab.value = 4
+                    }, modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = 0.dp)
+                        .weight(1f),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Image(
+                                bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
+                                contentDescription = stringResource(R.string.tracking),
+                                modifier = Modifier
+                                    .height(42.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.tracking),
+                                style = TextStyle(
+                                    fontSize = 14.sp,
+                                    color = White,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                modifier = Modifier
+                            )
+                        }
                     }
+                } else {
+                    Spacer(modifier = Modifier.height(1.dp).weight(1f))
                 }
             }
 
@@ -268,6 +322,7 @@ fun DetailDeviceScreen(
                         1 -> page2(viewModel, context, prefManager)
                         2 -> page3(viewModel, prefManager, context)
                         3 -> page4(viewModel, prefManager, context, navController)
+                        4 -> page5(viewModel, prefManager, context, navController)
                     }
                 }
             }
@@ -1104,6 +1159,24 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
 
 @Composable
 fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Context, navController: NavController) {
+    val googleViewModel = hiltViewModel<GoogleViewModel>()
+
+    val cameraPositionState = rememberCameraPositionState()
+    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
+
+    val scope = rememberCoroutineScope()
+
+    var altitude by remember { mutableStateOf("-") }
+
+    LaunchedEffect(currentLocation) {
+        if (currentLocation != null) {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLngZoom(currentLocation!!, 16f),
+                durationMs = 1000
+            )
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1116,13 +1189,164 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                 .clip(RoundedCornerShape(12.dp))
                 .background(GrayDark)
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp, vertical = 28.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
+            GoogleMap(
+                modifier = Modifier.fillMaxSize(),
+                cameraPositionState = cameraPositionState
             ) {
+                if (currentLocation != null) {
+                    val markerLocation = remember { mutableStateOf(LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) }
+                    val mapInfoShown = remember { mutableStateOf(false) }
+
+                    key(altitude) {
+                        MarkerComposable(
+                            state = MarkerState(position = markerLocation.value),
+                            visible = mapInfoShown.value,
+                            onClick = {
+                                mapInfoShown.value = false
+                                true
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(200.dp)
+                                    .padding(bottom = 58.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(White)
+                                    .padding(12.dp)
+                                    .zIndex(1f)
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text(
+                                        stringResource(id = R.string.motorcycle_name),
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 15.sp,
+                                        color = DefaultTextBlack,
+                                        textAlign = TextAlign.Center,
+                                        maxLines = 1,
+                                        modifier = Modifier.fillMaxWidth()
+                                            .padding(bottom = 6.dp)
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            "${stringResource(id = R.string.speed)}:",
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = GrayLight,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "-",
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = DefaultBlue,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            "${stringResource(id = R.string.rpm)}:",
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = GrayLight,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "-",
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = DefaultBlue,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                    ) {
+                                        Text(
+                                            "${stringResource(id = R.string.altitude)}:",
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = GrayLight,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            altitude,
+                                            fontWeight = FontWeight.Normal,
+                                            fontSize = 14.sp,
+                                            color = DefaultBlue,
+                                            textAlign = TextAlign.Center,
+                                            maxLines = 1,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        MarkerComposable(
+                            state = MarkerState(position = markerLocation.value),
+                            onClick = {
+                                mapInfoShown.value = !mapInfoShown.value
+                                true
+                            }
+                        ) {
+                            IconButton(
+                                modifier = Modifier
+                                    .width(58.dp),
+                                onClick = {
+                                    mapInfoShown.value = !mapInfoShown.value
+                                }
+                            ) {
+                                Box(){
+                                    Image(
+                                        contentScale = ContentScale.Inside,
+                                        painter = rememberDrawablePainter(
+                                            drawable = getDrawable(
+                                                LocalContext.current,
+                                                R.drawable.motorcycle_pin
+                                            )
+                                        ),
+                                        contentDescription = "",
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
+
+            LocationUpdater(
+                onLocationUpdate = { location ->
+                    val newLatLng = LatLng(location.latitude, location.longitude)
+                    currentLocation = newLatLng
+
+                    scope.launch {
+                        val altitudeData = googleViewModel.getAltitude(location.latitude, location.longitude)
+                        altitude = altitudeData.first?.results?.get(0)?.elevation.toString()
+                        Log.d("ALTITUDE", altitude)
+                    }
+                },
+                intervalMillis = 5000L
+            )
         }
     }
 }

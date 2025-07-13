@@ -8,6 +8,8 @@ import com.betamotor.app.service.AndroidBluetoothController
 import com.betamotor.app.service.AuthService
 import com.betamotor.app.service.AuthServiceImpl
 import com.betamotor.app.service.BluetoothController
+import com.betamotor.app.service.GoogleService
+import com.betamotor.app.service.GoogleServiceImpl
 import com.betamotor.app.service.MotorcycleService
 import com.betamotor.app.service.MotorcycleServiceImpl
 import com.betamotor.app.utils.LocalLogging
@@ -141,5 +143,40 @@ object AppModule {
         }
 
         return MotorcycleServiceImpl(client)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGoogleService(@ApplicationContext context: Context): GoogleService {
+        val client = HttpClient(Android) {
+            install(Logging) {
+                level = LogLevel.ALL
+            }
+
+            install(ContentNegotiation) {
+                json( Json {
+                    ignoreUnknownKeys = true
+                    explicitNulls = false
+                })
+            }
+
+            expectSuccess = true
+
+            HttpResponseValidator {
+                handleResponseExceptionWithRequest { cause, request ->
+                    val clientException = cause as? ClientRequestException ?: return@handleResponseExceptionWithRequest
+                    val exceptionResponse = clientException.response
+                    if (exceptionResponse.status == HttpStatusCode.Unauthorized) {
+                        val firstError = (exceptionResponse.body() as? ErrorResponse)?.errors?.get(0)?.message
+                        throw UnauthorizedException(
+                            exceptionResponse,
+                            firstError ?: "Please login first"
+                        )
+                    }
+                }
+            }
+        }
+
+        return GoogleServiceImpl(client)
     }
 }
