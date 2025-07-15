@@ -199,36 +199,7 @@ fun DetailDeviceScreen(
                     .padding(top = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                if (tab.value != 4) {
-                    Spacer(modifier = Modifier.height(1.dp).weight(1f))
-                } else {
-                    Button(onClick = {
-                        tab.value = 0
-                    }, modifier = Modifier
-                        .padding(horizontal = 24.dp, vertical = 8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            Image(
-                                bitmap = ImageBitmap.imageResource(R.drawable.ic_arrow_back_white),
-                                contentDescription = stringResource(R.string.back),
-                                modifier = Modifier
-                                    .height(18.dp)
-                                    .width(18.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.back),
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    color = White,
-                                    fontWeight = FontWeight.Medium,
-                                ),
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(1.dp).weight(1f))
 
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor),
@@ -238,35 +209,34 @@ fun DetailDeviceScreen(
                         .weight(1f)
                 )
 
-                if (tab.value != 4) {
-                    Button(onClick = {
-                        tab.value = 4
-                    }, modifier = Modifier
-                        .padding(horizontal = 24.dp, vertical = 0.dp)
-                        .weight(1f),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Image(
-                                bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
-                                contentDescription = stringResource(R.string.tracking),
-                                modifier = Modifier
-                                    .height(42.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.tracking),
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    color = White,
-                                    fontWeight = FontWeight.Medium,
-                                ),
-                                modifier = Modifier
-                            )
-                        }
+                Button(onClick = {
+                    isStreaming.value = false
+                    detailDeviceViewModel.setIsRecording(false)
+                    viewModel.disconnectDevice()
+                    navController.navigate(Screen.Tracking.route)
+                }, modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 0.dp)
+                    .weight(1f),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Image(
+                            bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
+                            contentDescription = stringResource(R.string.tracking),
+                            modifier = Modifier
+                                .height(42.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.tracking),
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                color = White,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            modifier = Modifier
+                        )
                     }
-                } else {
-                    Spacer(modifier = Modifier.height(1.dp).weight(1f))
                 }
             }
 
@@ -322,7 +292,6 @@ fun DetailDeviceScreen(
                         1 -> page2(viewModel, context, prefManager)
                         2 -> page3(viewModel, prefManager, context)
                         3 -> page4(viewModel, prefManager, context, navController)
-                        4 -> page5(viewModel, prefManager, context, navController)
                     }
                 }
             }
@@ -1153,200 +1122,6 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                 }
 //                DetailDataItem(title = tvTitle.value, value = tvData.value, suffix = "")
             }
-        }
-    }
-}
-
-@Composable
-fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Context, navController: NavController) {
-    val googleViewModel = hiltViewModel<GoogleViewModel>()
-
-    val cameraPositionState = rememberCameraPositionState()
-    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
-
-    val scope = rememberCoroutineScope()
-
-    var altitude by remember { mutableStateOf("-") }
-
-    LaunchedEffect(currentLocation) {
-        if (currentLocation != null) {
-            cameraPositionState.animate(
-                update = CameraUpdateFactory.newLatLngZoom(currentLocation!!, 16f),
-                durationMs = 1000
-            )
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(all = 26.dp)
-            .background(color = Color.Transparent),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(GrayDark)
-        ) {
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState
-            ) {
-                if (currentLocation != null) {
-                    val markerLocation = remember { mutableStateOf(LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) }
-                    val mapInfoShown = remember { mutableStateOf(false) }
-
-                    key(altitude) {
-                        MarkerComposable(
-                            state = MarkerState(position = markerLocation.value),
-                            visible = mapInfoShown.value,
-                            onClick = {
-                                mapInfoShown.value = false
-                                true
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(200.dp)
-                                    .padding(bottom = 58.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(White)
-                                    .padding(12.dp)
-                                    .zIndex(1f)
-                            ) {
-                                Column(
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(
-                                        stringResource(id = R.string.motorcycle_name),
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 15.sp,
-                                        color = DefaultTextBlack,
-                                        textAlign = TextAlign.Center,
-                                        maxLines = 1,
-                                        modifier = Modifier.fillMaxWidth()
-                                            .padding(bottom = 6.dp)
-                                    )
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                    ) {
-                                        Text(
-                                            "${stringResource(id = R.string.speed)}:",
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 14.sp,
-                                            color = GrayLight,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "-",
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 14.sp,
-                                            color = DefaultBlue,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                    ) {
-                                        Text(
-                                            "${stringResource(id = R.string.rpm)}:",
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 14.sp,
-                                            color = GrayLight,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            "-",
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 14.sp,
-                                            color = DefaultBlue,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                    ) {
-                                        Text(
-                                            "${stringResource(id = R.string.altitude)}:",
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 14.sp,
-                                            color = GrayLight,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            altitude,
-                                            fontWeight = FontWeight.Normal,
-                                            fontSize = 14.sp,
-                                            color = DefaultBlue,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        MarkerComposable(
-                            state = MarkerState(position = markerLocation.value),
-                            onClick = {
-                                mapInfoShown.value = !mapInfoShown.value
-                                true
-                            }
-                        ) {
-                            IconButton(
-                                modifier = Modifier
-                                    .width(58.dp),
-                                onClick = {
-                                    mapInfoShown.value = !mapInfoShown.value
-                                }
-                            ) {
-                                Box(){
-                                    Image(
-                                        contentScale = ContentScale.Inside,
-                                        painter = rememberDrawablePainter(
-                                            drawable = getDrawable(
-                                                LocalContext.current,
-                                                R.drawable.motorcycle_pin
-                                            )
-                                        ),
-                                        contentDescription = "",
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            LocationUpdater(
-                onLocationUpdate = { location ->
-                    val newLatLng = LatLng(location.latitude, location.longitude)
-                    currentLocation = newLatLng
-
-                    scope.launch {
-                        val altitudeData = googleViewModel.getAltitude(location.latitude, location.longitude)
-                        altitude = altitudeData.first?.results?.get(0)?.elevation.toString()
-                        Log.d("ALTITUDE", altitude)
-                    }
-                },
-                intervalMillis = 5000L
-            )
         }
     }
 }

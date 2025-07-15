@@ -20,6 +20,7 @@ import com.betamotor.app.presentation.screen.ScanDeviceScreen
 import com.betamotor.app.presentation.screen.SettingScreen
 import com.betamotor.app.presentation.screen.SplashScreen
 import com.betamotor.app.presentation.screen.TrackingListScreen
+import com.betamotor.app.presentation.screen.TrackingScreen
 
 @Composable
 fun Navigation() {
@@ -167,6 +168,16 @@ fun Navigation() {
             popEnterTransition = popEnterTransition
         ) {
             TrackingListScreen(navController)
+        }
+
+        composable(
+            route = Screen.Tracking.route,
+            exitTransition = exitTransition,
+            popExitTransition = popExitTransition,
+            enterTransition = enterTransition,
+            popEnterTransition = popEnterTransition
+        ) {
+            TrackingScreen(navController)
         }
     }
 }

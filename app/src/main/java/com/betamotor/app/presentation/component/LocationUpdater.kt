@@ -35,6 +35,7 @@ fun LocationUpdater(
         object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { onLocationUpdate(it) }
+
             }
         }
     }
