@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_28Apr2025</string>
+    <string name="app_name">Betamotor_20Jul2025</string>
     <string name="connection_timeout">Tiempo de Espera de Conexión</string>
     <string name="nearby_bike">Motos Cercanas</string>
     <string name="no_name">Sin Nombre</string>
@@ -105,6 +105,7 @@
     <string name="back_button">Botón Atrás</string>
     <string name="back">Atrás</string>
     <string name="share_file">Compartir archivo</string>
+    <string name="file_name">Archivo Nombre</string>
     <string name="setting">Ajustes</string>
     <string name="language">Idioma</string>
     <string name="select_language">Seleccionar idioma</string>
@@ -114,6 +115,7 @@
     <string name="italian">Italiano</string>
     <string name="spanish">Español</string>
     <string name="system_default">Predeterminado del sistema</string>
+    <string name="track_record_complete">Track Record Complete</string>
 
     <string name="speed">Velocidad</string>
     <string name="altitude">Altitud</string>

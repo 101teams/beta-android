@@ -1,8 +1,13 @@
 package com.betamotor.app.service
 
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
+import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingDataItem
+import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingResponse
 import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.api.motorcycle.MotorcycleTypesResponse
+import com.betamotor.app.data.api.motorcycle.StarMotorcycleTrackingResponse
+import com.betamotor.app.data.api.motorcycle.StartMotorcycleTrackingRequest
+import com.betamotor.app.data.api.motorcycle.StopMotorcycleTrackingRequest
 
 interface MotorcycleService {
     suspend fun getMotorcycleTypes(): Pair<MotorcycleTypesResponse?, String>
@@ -10,4 +15,7 @@ interface MotorcycleService {
     suspend fun saveMotorcycle(device: CreateMotorcycleRequest): Pair<Boolean?, String>
     suspend fun removeMotorcycle(macAddress: String): Pair<Boolean?, String>
     suspend fun updateLastConnected(macAddress: String): Pair<Boolean?, String>
+    suspend fun startTracking(data: StartMotorcycleTrackingRequest): Pair<StarMotorcycleTrackingResponse?, String>
+    suspend fun stopTracking(data: StopMotorcycleTrackingRequest): Pair<Boolean?, String>
+    suspend fun getTrackingHistory(transactionID: String): Pair<List<HistoryMotorcycleTrackingDataItem>?, String>
 }

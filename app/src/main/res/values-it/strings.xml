@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_28Apr2025</string>
+    <string name="app_name">Betamotor_20Jul2025</string>
     <string name="connection_timeout">Timeout di Connessione</string>
     <string name="nearby_bike">Moto Vicine</string>
     <string name="no_name">Nessun Nome</string>
@@ -39,7 +39,7 @@
     <string name="failed_reset_password">Reimpostazione password non riuscita</string>
     <string name="logout">Disconnetti</string>
     <string name="tracking">Tracciamento</string>
-    
+
     <!-- New hardcoded strings to extract -->
     <string name="connect_your_bike">Collega la Tua Moto</string>
     <string name="find_nearby_bikes">Trova Moto Vicine</string>
@@ -73,7 +73,7 @@
     <string name="vin">VIN</string>
     <string name="search">Cerca</string>
     <string name="id">ID</string>
-    
+
     <!-- Engine data labels -->
     <string name="rpm">RPM</string>
     <string name="throttle">ACCELERATORE</string>
@@ -89,7 +89,7 @@
     <string name="calibration">CALIBRAZIONE</string>
     <string name="homol_code">CODICE OMOL.</string>
     <string name="idle_target">OBIETTIVO MINIMO</string>
-    
+
     <!-- Units -->
     <string name="rpm_unit">rpm</string>
     <string name="percent_unit">%</string>
@@ -98,13 +98,14 @@
     <string name="mbar_unit">Mbar</string>
     <string name="hour_unit">h</string>
     <string name="volt_unit">V</string>
-    
+
     <string name="recording">Registrazione</string>
     <string name="start_record">Avvia Registrazione</string>
     <string name="refresh">Aggiornare</string>
     <string name="back_button">Pulsante Indietro</string>
     <string name="back">Indietro</string>
     <string name="share_file">Condividi file</string>
+    <string name="file_name">File Nome</string>
     <string name="setting">Impostazioni</string>
     <string name="language">Lingua</string>
     <string name="select_language">Seleziona lingua</string>
@@ -114,6 +115,7 @@
     <string name="italian">Italiano</string>
     <string name="spanish">Spagnolo</string>
     <string name="system_default">Predefinito di sistema</string>
+    <string name="track_record_complete">Track Record Complete</string>
 
     <string name="speed">Velocità</string>
     <string name="altitude">Altitudine</string>

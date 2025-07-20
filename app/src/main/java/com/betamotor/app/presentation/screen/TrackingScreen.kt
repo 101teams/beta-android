@@ -2,6 +2,8 @@ package com.betamotor.app.presentation.screen
 
 import android.Manifest
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources.getDrawable
@@ -33,6 +35,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -62,15 +65,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
 import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.bluetooth.BluetoothDevice
+import com.betamotor.app.data.constants
 import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.CheckPermission
 import com.betamotor.app.presentation.component.Input
 import com.betamotor.app.presentation.component.LocationUpdater
+import com.betamotor.app.presentation.component.SaveMotorcycleDialog
+import com.betamotor.app.presentation.component.SaveTrackingMotorcycleDialog
+import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
@@ -97,11 +107,15 @@ import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MarkerComposable
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -109,8 +123,16 @@ fun TrackingScreen(
     navController: NavController
 ) {
     val googleViewModel = hiltViewModel<GoogleViewModel>()
-    val btBiewModel = hiltViewModel<BluetoothViewModel>()
+    val btViewModel = hiltViewModel<BluetoothViewModel>()
     val detailDeviceViewModel = hiltViewModel<DetailDeviceViewModel>()
+    val motorViewModel = hiltViewModel<MotorcycleViewModel>()
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var lifecycleEvent by remember { mutableStateOf(Lifecycle.Event.ON_ANY) }
+    btViewModel.observeLifecycle(lifecycle = lifecycleOwner.lifecycle)
+
+    val context = LocalContext.current
+    val prefManager = PrefManager(context)
 
     val isRecording by detailDeviceViewModel.isRecording.collectAsState()
 
@@ -122,6 +144,12 @@ fun TrackingScreen(
     var altitude by remember { mutableStateOf("-") }
     var speed by remember { mutableFloatStateOf(0.0f) }
 
+    val showSaveTrackingMotorcycleDialog = remember {
+        mutableStateOf(false)
+    }
+
+    val csvData: MutableState<MutableList<String>> = remember { mutableStateOf(mutableListOf()) }
+
     LaunchedEffect(currentLocation) {
         if (currentLocation != null) {
             cameraPositionState.animate(
@@ -129,6 +157,95 @@ fun TrackingScreen(
                 durationMs = 1000
             )
         }
+    }
+
+    fun goBackToHome() {
+        navController.popBackStack()
+    }
+
+    LaunchedEffect(lifecycleEvent) {
+        when (lifecycleEvent) {
+            Lifecycle.Event.ON_DESTROY -> {//before was on pause
+                goBackToHome()
+            }
+            else -> {}
+        }
+    }
+
+    fun stripToZero(raw: String): String {
+        return if (raw.isBlank() || raw == "-") {
+            "0"
+        } else {
+            raw
+        }
+    }
+
+    val dataIds = listOf(
+        constants.RLI_ENGINE_SPEED,
+    )
+
+    var finishedFetch = true
+
+    fun fetchAndContinue(index: Int = 0, result: MutableMap<Int, String> = mutableMapOf(), latLng: LatLng, speed: Float) {
+        if (!finishedFetch) {
+            return
+        }
+
+        finishedFetch = false
+
+        if (index == dataIds.size - 1) {
+            val payload = mapOf(
+                "speed" to speed.toString(),
+                "altitude" to stripToZero(altitude),
+                "rpm" to stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0"),
+                "latitude" to latLng.latitude.toString(),
+                "longitude" to latLng.longitude.toString(),
+            ).mapValues { it.value.ifBlank { "null" } }
+
+            Log.d("MQTT Payload", payload.toString())
+            Log.d("Send to ","Beta/${prefManager.getSelectedMotorcycleId()}/position")
+
+            MQTTHelper(context).publishMessage(
+                "Beta/${prefManager.getSelectedMotorcycleId()}/position",
+                JSONObject(payload).toString(2)
+            )
+            finishedFetch = true
+
+
+            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+            csvData.value.add("$time,$speed,$altitude,${stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")},${latLng.latitude},${latLng.longitude}")
+
+            return
+        }
+
+        val id = dataIds[index]
+        val data = byteArrayOf(0x01, 0x01, 0x02, (id shr 8).toByte(), (id and 0xFF).toByte())
+        val key = "fetch_$id"
+
+        val handler = Handler(Looper.getMainLooper())
+        var callbackCalled = false
+
+        val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
+            if (rliID.toInt() == id) {
+                callbackCalled = true
+                btViewModel.removeOnDataReceivedCallback(key)
+
+                val value = parseSensorValue(id, fullData)
+                if (value != null) {
+                    result[id] = value
+                    updateViewModel(detailDeviceViewModel, id, value)
+                }
+            }
+        }
+
+        btViewModel.addOnDataReceivedCallback(key, callback)
+        btViewModel.sendCommandByteDES(data)
+
+        handler.postDelayed({
+            if (!callbackCalled) {
+                btViewModel.removeOnDataReceivedCallback(key)
+            }
+        }, 200L)
     }
 
     Box (
@@ -156,7 +273,7 @@ fun TrackingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Button(onClick = {
-                    navController.popBackStack()
+                    goBackToHome()
                 }, modifier = Modifier
                     .padding(horizontal = 24.dp, vertical = 8.dp), colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
                     Row(
@@ -193,10 +310,6 @@ fun TrackingScreen(
                 Spacer(modifier = Modifier.height(1.dp).weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
-            Text("Altitude : $altitude")
-            Text("Speed: $speed")
-
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -211,7 +324,8 @@ fun TrackingScreen(
                 ) {
                     GoogleMap(
                         modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState
+                        cameraPositionState = cameraPositionState,
+                        properties = MapProperties(isMyLocationEnabled = true),
                     ) {
                         if (currentLocation != null) {
                             key(altitude) {
@@ -361,10 +475,12 @@ fun TrackingScreen(
 
                             scope.launch {
                                 speed = location.speed
-                                Log.d("SPEED", location.speed.toString())
                                 val altitudeData = googleViewModel.getAltitude(location.latitude, location.longitude)
                                 altitude = altitudeData.first?.results?.get(0)?.elevation.toString()
-                                Log.d("ALTITUDE", altitude)
+
+                                if (currentLocation != null && isRecording) {
+                                    fetchAndContinue(latLng = currentLocation!!, speed = speed)
+                                }
                             }
                         },
                         intervalMillis = 5000L
@@ -395,6 +511,22 @@ fun TrackingScreen(
                                 indication = null
                             ) {
                                 detailDeviceViewModel.setIsRecording(!isRecording)
+
+                                scope.launch {
+                                    if(isRecording) {
+                                        motorViewModel.startTracking(prefManager.getSelectedMotorcycleId())
+                                    } else {
+                                        if (motorViewModel.trackingTransactionID.value?.data?.transactionKey != null) {
+                                            if (motorViewModel.trackingTransactionID.value != null) {
+                                                motorViewModel.stopTracking(prefManager.getSelectedMotorcycleId(), motorViewModel.trackingTransactionID.value?.data?.transactionKey!!)
+                                            }
+
+                                            motorViewModel.getTrackingHistory(motorViewModel.trackingTransactionID.value?.data?.transactionKey!!)
+                                        }
+
+                                        showSaveTrackingMotorcycleDialog.value = true
+                                    }
+                                }
                             }
                         ) {
                             Column(
@@ -412,6 +544,17 @@ fun TrackingScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        if (showSaveTrackingMotorcycleDialog.value) {
+            SaveTrackingMotorcycleDialog (openDialog = showSaveTrackingMotorcycleDialog, csvData) { filename ->
+                scope.launch {
+                    showSaveTrackingMotorcycleDialog.value = false
+                    csvData.value = mutableListOf()
+                    Toast.makeText(context, filename, Toast.LENGTH_SHORT).show()
+                    showSaveTrackingMotorcycleDialog.value = false
                 }
             }
         }

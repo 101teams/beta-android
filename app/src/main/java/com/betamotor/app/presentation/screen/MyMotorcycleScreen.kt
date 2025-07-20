@@ -34,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import org.json.JSONObject
 import com.betamotor.app.theme.RobotoCondensed
+import kotlinx.coroutines.launch
 import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -107,6 +109,8 @@ fun MyMotorcycleScreen(
     )
     val bluetoothPermissionState = rememberMultiplePermissionsState(permissions = permissions)
     var showPermissionDialog by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
 
     fun isPermissionGranted(): Boolean {
         val denied = bluetoothPermissionState.permissions.filter {
@@ -312,6 +316,15 @@ fun MyMotorcycleScreen(
                                             if (success) {
                                                 return@connectDevice
                                             } else {
+//                                              DEBUG ONLY
+//                                                scope.launch {
+//                                                    prefManager.setSelectedMotorcycleId(selectedDevice.value!!.deviceId)
+//                                                    prefManager.setMacAddress(selectedDevice.value!!.macAddress)
+//                                                    navController.navigate(Screen.DetailDevice.route)
+//                                                }
+//                                                return@connectDevice
+//                                              END OF DEBUG ONLY
+
                                                 context
                                                     .findActivity()
                                                     ?.runOnUiThread {
@@ -363,12 +376,12 @@ fun MyMotorcycleScreen(
                         contentDescription = stringResource(R.string.tracking),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(42.dp)
+                            .height(28.dp)
                     )
                     Text(
                         text = stringResource(R.string.tracking),
                         style = TextStyle(
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             color = White,
                             fontWeight = FontWeight.Medium,
                         ),
@@ -390,11 +403,11 @@ fun MyMotorcycleScreen(
                 Text(
                     text = stringResource(R.string.logout),
                     style = TextStyle(
-                        fontSize = 14.sp,
+                        fontSize = 12.sp,
                         color = White,
                         fontWeight = FontWeight.Medium,
                     ),
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(12.dp)
                 )
             }
         }
