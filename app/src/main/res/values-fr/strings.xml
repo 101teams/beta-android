@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_28Apr2025</string>
+    <string name="app_name">Betamotor_20Jul2025</string>
     <string name="connection_timeout">Délai de Connexion Dépassé</string>
     <string name="nearby_bike">Motos à Proximité</string>
     <string name="no_name">Aucun Nom</string>
@@ -29,6 +29,7 @@
     <string name="forgot_password_enter_email">Veuillez saisir votre email pour récupérer votre mot de passe</string>
     <string name="forgot_password">Mot de Passe Oublié?</string>
     <string name="motorcycle_model">Modèles de Motos</string>
+    <string name="motorcycle_name">Nom de Motos</string>
     <string name="choose_motorcycle_model">Choisir les Modèles de Motos</string>
     <string name="choose">Choisir</string>
     <string name="email_cannot_empty">L\'email ne peut pas être vide!</string>
@@ -37,6 +38,7 @@
     <string name="success_reset_password">Si un utilisateur avec cet email existe, un lien de réinitialisation de mot de passe a été envoyé</string>
     <string name="failed_reset_password">Réinitialisation du mot de passe échouée</string>
     <string name="logout">Déconnexion</string>
+    <string name="tracking">Suivi</string>
     
     <!-- New hardcoded strings to extract -->
     <string name="connect_your_bike">Connectez Votre Moto</string>
@@ -101,7 +103,9 @@
     <string name="start_record">Démarrer l\'Enregistrement</string>
     <string name="refresh">Actualiser</string>
     <string name="back_button">Bouton retour</string>
+    <string name="back">Retour</string>
     <string name="share_file">Partager le fichier</string>
+    <string name="file_name">Fichier de Nom</string>
     <string name="setting">Paramètres</string>
     <string name="language">Langue</string>
     <string name="select_language">Sélectionner la langue</string>
@@ -111,4 +115,8 @@
     <string name="italian">Italien</string>
     <string name="spanish">Espagnol</string>
     <string name="system_default">Défaut système</string>
+    <string name="track_record_complete">Track Record Complete</string>
+
+    <string name="speed">Vitesse</string>
+    <string name="altitude">Altitude</string>
 </resources>

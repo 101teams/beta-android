@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.widget.Button
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +65,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.zIndex
+import androidx.compose.material.IconButton
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -72,10 +77,18 @@ import com.betamotor.app.data.constants
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
+import com.betamotor.app.presentation.component.LocationUpdater
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
+import com.betamotor.app.presentation.viewmodel.GoogleViewModel
+import androidx.appcompat.content.res.AppCompatResources.getDrawable
+import androidx.compose.runtime.key
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
+
 import com.betamotor.app.theme.Black
+import com.betamotor.app.theme.DefaultBlue
+import com.betamotor.app.theme.DefaultTextBlack
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.GrayLight
@@ -84,8 +97,16 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
+import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerState
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -176,14 +197,47 @@ fun DetailDeviceScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                Spacer(modifier = Modifier.height(1.dp).weight(1f))
+
                 Image(
                     bitmap = ImageBitmap.imageResource(R.drawable.img_betamotor),
                     contentDescription = stringResource(R.string.betamotor_app_logo),
                     modifier = Modifier
-                        .fillMaxWidth()
                         .height(100.dp)
+                        .weight(1f)
                 )
+
+                Button(onClick = {
+                    isStreaming.value = false
+                    detailDeviceViewModel.setIsRecording(false)
+                    viewModel.disconnectDevice()
+                    navController.navigate(Screen.Tracking.route)
+                }, modifier = Modifier
+                    .padding(horizontal = 24.dp, vertical = 0.dp)
+                    .weight(1f),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Image(
+                            bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
+                            contentDescription = stringResource(R.string.tracking),
+                            modifier = Modifier
+                                .height(42.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.tracking),
+                            style = TextStyle(
+                                fontSize = 14.sp,
+                                color = White,
+                                fontWeight = FontWeight.Medium,
+                            ),
+                            modifier = Modifier
+                        )
+                    }
+                }
             }
 
             Scaffold(

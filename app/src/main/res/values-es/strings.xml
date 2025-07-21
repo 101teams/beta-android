@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_28Apr2025</string>
+    <string name="app_name">Betamotor_20Jul2025</string>
     <string name="connection_timeout">Tiempo de Espera de Conexión</string>
     <string name="nearby_bike">Motos Cercanas</string>
     <string name="no_name">Sin Nombre</string>
@@ -29,6 +29,7 @@
     <string name="forgot_password_enter_email">Por favor ingresa tu email para recuperar tu contraseña</string>
     <string name="forgot_password">¿Contraseña Olvidada?</string>
     <string name="motorcycle_model">Modelos de Motocicletas</string>
+    <string name="motorcycle_name">Nombre de la motocicleta</string>
     <string name="choose_motorcycle_model">Elegir Modelos de Motocicletas</string>
     <string name="choose">Elegir</string>
     <string name="email_cannot_empty">¡El email no puede estar vacío!</string>
@@ -37,6 +38,7 @@
     <string name="success_reset_password">Si existe un usuario con ese email, se ha enviado un enlace de restablecimiento de contraseña</string>
     <string name="failed_reset_password">Restablecimiento de contraseña fallido</string>
     <string name="logout">Cerrar Sesión</string>
+    <string name="tracking">Seguimiento</string>
     
     <!-- New hardcoded strings to extract -->
     <string name="connect_your_bike">Conecta Tu Moto</string>
@@ -101,7 +103,9 @@
     <string name="start_record">Iniciar Grabación</string>
     <string name="refresh">Actualizar</string>
     <string name="back_button">Botón Atrás</string>
+    <string name="back">Atrás</string>
     <string name="share_file">Compartir archivo</string>
+    <string name="file_name">Archivo Nombre</string>
     <string name="setting">Ajustes</string>
     <string name="language">Idioma</string>
     <string name="select_language">Seleccionar idioma</string>
@@ -111,4 +115,8 @@
     <string name="italian">Italiano</string>
     <string name="spanish">Español</string>
     <string name="system_default">Predeterminado del sistema</string>
+    <string name="track_record_complete">Track Record Complete</string>
+
+    <string name="speed">Velocidad</string>
+    <string name="altitude">Altitud</string>
 </resources>

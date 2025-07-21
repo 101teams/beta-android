@@ -4,8 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
+import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingDataItem
 import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.api.motorcycle.MotorcycleTypeItem
+import com.betamotor.app.data.api.motorcycle.StarMotorcycleTrackingResponse
+import com.betamotor.app.data.api.motorcycle.StartMotorcycleTrackingRequest
+import com.betamotor.app.data.api.motorcycle.StopMotorcycleTrackingRequest
 import com.betamotor.app.data.bluetooth.BluetoothDeviceDomain
 import com.betamotor.app.service.BluetoothController
 import com.betamotor.app.service.MotorcycleService
@@ -25,6 +29,12 @@ class MotorcycleViewModel @Inject constructor(
 
     private val _motorcycles = MutableStateFlow<List<MotorcycleItem>>(emptyList())
     val motorcycles: StateFlow<List<MotorcycleItem>> = _motorcycles.asStateFlow()
+
+    private val _trackingTransactionID = MutableStateFlow<StarMotorcycleTrackingResponse?>(null)
+    val trackingTransactionID: StateFlow<StarMotorcycleTrackingResponse?> = _trackingTransactionID
+
+    private val _historyMotorcycleTracking = MutableStateFlow<List<HistoryMotorcycleTrackingDataItem?>>(emptyList())
+    val historyMotorcycleTracking: StateFlow<List<HistoryMotorcycleTrackingDataItem?>> = _historyMotorcycleTracking
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -114,6 +124,72 @@ class MotorcycleViewModel @Inject constructor(
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = "Failed to remove device: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    suspend fun startTracking(deviceID: String): Boolean {
+        val request = StartMotorcycleTrackingRequest(
+            device_id = deviceID
+        )
+        _isLoading.value = true
+
+        try {
+            val resp = apiService.startTracking(request)
+
+            if (resp.first == null) {
+                throw Exception(resp.second)
+            }
+
+            _trackingTransactionID.value = resp.first
+
+            _error.value = null
+
+            return true
+        } catch (e: Exception) {
+            _error.value = "Failed to start tracking: ${e.message}"
+            return false
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    suspend fun stopTracking(deviceID: String, transactionID: String): Boolean {
+        val request = StopMotorcycleTrackingRequest(
+            device_id = deviceID,
+            transaction_key = transactionID,
+        )
+        _isLoading.value = true
+
+        try {
+            val resp = apiService.stopTracking(request)
+
+            if (resp.first != true) {
+                throw Exception(resp.second)
+            }
+
+            _error.value = null
+
+            return true
+        } catch (e: Exception) {
+            _error.value = "Failed to start tracking: ${e.message}"
+            return false
+        } finally {
+            _isLoading.value = false
+        }
+    }
+
+    fun getTrackingHistory(transactionID: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val response = apiService.getTrackingHistory(transactionID)
+                _historyMotorcycleTracking.value = response.first ?: emptyList()
+                _error.value = null
+            } catch (e: Exception) {
+                _error.value = "Failed to load get history: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

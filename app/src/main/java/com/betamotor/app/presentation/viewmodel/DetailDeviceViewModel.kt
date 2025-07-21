@@ -9,6 +9,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DetailDeviceViewModel @Inject constructor() : ViewModel(), DefaultLifecycleObserver {
+    private val _isTracking = MutableStateFlow(false)
+    val isTracking: StateFlow<Boolean> = _isTracking
+
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording
 
@@ -38,6 +41,10 @@ class DetailDeviceViewModel @Inject constructor() : ViewModel(), DefaultLifecycl
 
     fun setIsRecording(value: Boolean) {
         _isRecording.value = value
+    }
+
+    fun setIsTracking(value: Boolean) {
+        _isTracking.value = value
     }
 
     fun updateRpm(value: String) { _rpm.value = value }
