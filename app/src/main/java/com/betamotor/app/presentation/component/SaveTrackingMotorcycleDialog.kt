@@ -139,7 +139,6 @@ fun generateCSVTrackingMotorcycle(context: Context, csvData: MutableState<Mutabl
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
         context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_file)))
-        openDialog.value = false
     } catch (e: IOException) {
         e.printStackTrace()
     }

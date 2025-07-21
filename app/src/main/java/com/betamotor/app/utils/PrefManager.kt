@@ -107,4 +107,12 @@ class PrefManager(
         editor.remove("mac_address")
         editor.apply()
     }
+
+    fun setSelectedMotorcycleName(motorcycleName: String) {
+        saveData("motorcycle_name", motorcycleName)
+    }
+
+    fun getSelectedMotorcycleName(): String {
+        return getData("motorcycle_name", "")
+    }
 }

@@ -4,7 +4,6 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
-import android.widget.Button
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,7 +41,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,14 +56,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.zIndex
-import androidx.compose.material.IconButton
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -77,18 +72,10 @@ import com.betamotor.app.data.constants
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
-import com.betamotor.app.presentation.component.LocationUpdater
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
-import com.betamotor.app.presentation.viewmodel.GoogleViewModel
-import androidx.appcompat.content.res.AppCompatResources.getDrawable
-import androidx.compose.runtime.key
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
-
 import com.betamotor.app.theme.Black
-import com.betamotor.app.theme.DefaultBlue
-import com.betamotor.app.theme.DefaultTextBlack
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.GrayLight
@@ -97,16 +84,6 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.maps.android.compose.rememberMarkerState
-import com.google.maps.android.compose.MarkerComposable
-import com.google.maps.android.compose.MarkerState
-import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -157,7 +134,12 @@ fun DetailDeviceScreen(
         }
     }
 
-    val tabs = listOf(stringResource(R.string.engine_data), stringResource(R.string.engine_info), stringResource(R.string.idle_adjustment), stringResource(R.string.engine_diagnose))
+    val tabs = listOf(
+        stringResource(R.string.engine_data),
+        stringResource(R.string.engine_info),
+        "+/- IDLE",
+        stringResource(R.string.engine_diagnose)
+    )
     val icons = listOf(
         painterResource(id = R.drawable.ic_tab1),
         painterResource(id = R.drawable.ic_tab2),
@@ -233,6 +215,7 @@ fun DetailDeviceScreen(
                                 fontSize = 14.sp,
                                 color = White,
                                 fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
                             ),
                             modifier = Modifier
                         )
@@ -277,7 +260,16 @@ fun DetailDeviceScreen(
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    Text(title, style = MaterialTheme.typography.button,)
+                                    Text(
+                                        title,
+                                        style = TextStyle(
+                                            fontFamily = RobotoCondensed,
+                                            fontWeight = FontWeight.Medium,
+                                            fontSize = 12.sp,
+                                            color = White,
+                                            textAlign = TextAlign.Center,
+                                        ),
+                                    )
                                 }
                             }
                         }
