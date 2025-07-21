@@ -314,6 +314,7 @@ fun ScanDeviceScreen(
                     if (deviceIdAlreadyUsed || macAddressAlreadyUsed) {
                         Toast.makeText(context, context.getString(R.string.device_already_saved), Toast.LENGTH_SHORT).show()
                         prefManager.setSelectedMotorcycleId(form.deviceId)
+                        prefManager.setSelectedMotorcycleName(form.name)
                         selectedDevice.value?.let { prefManager.setMacAddress(it.macAddress) }
 
                         MQTTHelper(context).publishMessage("BetaDebug", JSONObject(
@@ -342,6 +343,7 @@ fun ScanDeviceScreen(
 
                     if (success) {
                         prefManager.setSelectedMotorcycleId(form.deviceId)
+                        prefManager.setSelectedMotorcycleName(form.name)
                         selectedDevice.value?.let { prefManager.setMacAddress(it.macAddress) }
 
                         MQTTHelper(context).publishMessage("BetaDebug", JSONObject(

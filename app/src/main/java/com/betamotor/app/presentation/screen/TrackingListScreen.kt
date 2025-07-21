@@ -146,6 +146,7 @@ fun TrackingListScreen(
 
         prefManager.setSelectedMotorcycleId(selectedDevice.value!!.deviceId)
         prefManager.setMacAddress(selectedDevice.value!!.macAddress)
+        prefManager.setSelectedMotorcycleName(selectedDevice.value!!.name)
 
         MQTTHelper(context).publishMessage("BetaDebug", JSONObject(
             mapOf(
