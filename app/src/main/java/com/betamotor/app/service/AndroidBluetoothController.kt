@@ -872,6 +872,7 @@ class AndroidBluetoothController(
     override fun sendCommandByteDES(command: ByteArray) {
         if (BuildConfig.DEBUG) { // simulate engine data on debug mode
             if (command[0].toInt() == 0x01 && command[1].toInt() == 0x01) { // engine data
+                Log.d("sendCommandByteDES DEBUG", "1")
                 val random = java.util.Random()
                 val rpmValue = random.nextInt(65536)
                 val gasValue = random.nextInt(65536)
@@ -893,6 +894,7 @@ class AndroidBluetoothController(
                     onDataReadReceived(rpm, DEScharUuidRx)
                 }
             } else if (command[0].toInt() == 0x00 && command[1].toInt() == 0x01) { // DTC
+                Log.d("sendCommandByteDES DEBUG", "2")
                 val data = byteArrayOf(
                     0x00, 0x01, 0x00, 0x6E.toByte(), 0x01, 0x05, 0x62, 0x00, 0x00, 0x00,
                     0x00, 0x00, 0x01, 0x20, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00,

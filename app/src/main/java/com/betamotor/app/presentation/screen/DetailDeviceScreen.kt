@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.content.res.AppCompatResources.getDrawable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -29,6 +30,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.TabRow
@@ -39,8 +41,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +58,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
@@ -60,8 +66,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -72,10 +80,16 @@ import com.betamotor.app.data.constants
 import com.betamotor.app.navigation.Screen
 import com.betamotor.app.presentation.component.BackInvokeHandler
 import com.betamotor.app.presentation.component.ExportDialog
+import com.betamotor.app.presentation.component.LocationUpdater
+import com.betamotor.app.presentation.component.SaveTrackingMotorcycleDialog
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
+import com.betamotor.app.presentation.viewmodel.GoogleViewModel
+import com.betamotor.app.presentation.viewmodel.MotorcycleViewModel
 import com.betamotor.app.theme.Black
+import com.betamotor.app.theme.DefaultBlue
+import com.betamotor.app.theme.DefaultTextBlack
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.GrayLight
@@ -84,6 +98,15 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MarkerComposable
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -138,13 +161,15 @@ fun DetailDeviceScreen(
         stringResource(R.string.engine_data),
         stringResource(R.string.engine_info),
         "+/- IDLE",
-        stringResource(R.string.engine_diagnose)
+        stringResource(R.string.engine_diagnose),
+        stringResource(R.string.tracking).uppercase(),
     )
     val icons = listOf(
         painterResource(id = R.drawable.ic_tab1),
         painterResource(id = R.drawable.ic_tab2),
         painterResource(id = R.drawable.ic_tab3),
         painterResource(id = R.drawable.ic_tab4),
+        painterResource(id = R.drawable.ic_map_white),
     )
 
     val tab = remember { mutableStateOf(0) }
@@ -191,36 +216,7 @@ fun DetailDeviceScreen(
                         .weight(1f)
                 )
 
-                Button(onClick = {
-                    isStreaming.value = false
-                    detailDeviceViewModel.setIsRecording(false)
-                    viewModel.disconnectDevice()
-                    navController.navigate(Screen.Tracking.route)
-                }, modifier = Modifier
-                    .padding(horizontal = 24.dp, vertical = 0.dp)
-                    .weight(1f),
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Green),) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Image(
-                            bitmap = ImageBitmap.imageResource(R.drawable.ic_map_white),
-                            contentDescription = stringResource(R.string.tracking),
-                            modifier = Modifier
-                                .height(42.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.tracking),
-                            style = TextStyle(
-                                fontSize = 14.sp,
-                                color = White,
-                                fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.Center,
-                            ),
-                            modifier = Modifier
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(1.dp).weight(1f))
             }
 
             Scaffold(
@@ -241,16 +237,19 @@ fun DetailDeviceScreen(
                             val isSelected = tab.value == index
                             Box(
                                 modifier = Modifier
-                                    .padding(top = 12.dp, start = 8.dp, end = 8.dp, bottom = 12.dp)
+                                    .padding(top = 12.dp, start = 4.dp, end = 4.dp, bottom = 12.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(if (isSelected) Green else Color.Transparent)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null // Removes ripple effect
                                     ) {
+                                        if (index != 0) {
+                                            isStreaming.value = false
+                                        }
                                         tab.value = index
                                     }
-                                    .padding(vertical = 8.dp, horizontal = 16.dp),
+                                    .padding(vertical = 8.dp, horizontal = 8.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -284,6 +283,7 @@ fun DetailDeviceScreen(
                         1 -> page2(viewModel, context, prefManager)
                         2 -> page3(viewModel, prefManager, context)
                         3 -> page4(viewModel, prefManager, context, navController)
+                        4 -> page5(viewModel, prefManager, context, navController)
                     }
                 }
             }
@@ -387,6 +387,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
     }
 
     fun fetchAndContinue(index: Int = 0, result: MutableMap<Int, String> = mutableMapOf()) {
+        Log.d("fetchAndContinue", "stream")
         if (!isStreaming.value) {
             return
         }
@@ -647,6 +648,7 @@ fun page2(btViewModel: BluetoothViewModel, context: Context, prefManager: PrefMa
     val homologation = remember { mutableStateOf("-") }
 
     DisposableEffect(Unit) {
+        Log.d("Page2", "DisposableEffect Started")
         val key = "ENGINE_INFO_CALLBACK"
         val callback: (Byte, ByteArray) -> Unit = {
             rliID, fullData ->
@@ -707,6 +709,7 @@ fun page2(btViewModel: BluetoothViewModel, context: Context, prefManager: PrefMa
         getVINData(btViewModel, constants.ECU_VIN)
 
         onDispose {
+            Log.d("Page2", "DisposableEffect onDispose")
             btViewModel.removeOnDataReceivedCallback(key)
         }
     }
@@ -1112,7 +1115,381 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                         DetailDataItem(title = it.first, value = it.second, suffix = "")
                     }
                 }
-//                DetailDataItem(title = tvTitle.value, value = tvData.value, suffix = "")
+            }
+        }
+    }
+}
+
+@Composable
+fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Context, navController: NavController) {
+    val googleViewModel = hiltViewModel<GoogleViewModel>()
+    val detailDeviceViewModel = hiltViewModel<DetailDeviceViewModel>()
+    val motorViewModel = hiltViewModel<MotorcycleViewModel>()
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    btViewModel.observeLifecycle(lifecycle = lifecycleOwner.lifecycle)
+
+    val isRecording by detailDeviceViewModel.isRecording.collectAsState()
+
+    val cameraPositionState = rememberCameraPositionState()
+    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
+
+    val scope = rememberCoroutineScope()
+
+    var altitude by remember { mutableStateOf("-") }
+    var speed by remember { mutableFloatStateOf(0.0f) }
+    var rpm by remember { mutableStateOf("-") }
+    var markerKey by remember { mutableStateOf("-") }
+
+    val showSaveTrackingMotorcycleDialog = remember {
+        mutableStateOf(false)
+    }
+
+    val mapInfoShown = remember { mutableStateOf(false) }
+
+    val csvData: MutableState<MutableList<String>> = remember { mutableStateOf(mutableListOf()) }
+
+    LaunchedEffect(currentLocation) {
+        if (currentLocation != null) {
+            cameraPositionState.animate(
+                update = CameraUpdateFactory.newLatLngZoom(currentLocation!!, 16f),
+                durationMs = 1000
+            )
+        }
+    }
+
+    fun stripToZero(raw: String): String {
+        return if (raw.isBlank() || raw == "-") {
+            "0"
+        } else {
+            raw
+        }
+    }
+
+    val dataIds = listOf(
+        constants.RLI_ENGINE_SPEED,
+    )
+
+
+    fun fetchAndContinue(index: Int = 0, result: MutableMap<Int, String> = mutableMapOf(), latLng: LatLng, speed: Float) {
+        Log.d("fetchAndContinue", "start")
+        markerKey = "$speed-$rpm-$altitude"
+
+        if (index >= dataIds.size) {
+            Log.d("fetchAndContinue", "end")
+            rpm = stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")
+            if (isRecording) {
+                val payload = mapOf(
+                    "speed" to speed.toString(),
+                    "altitude" to stripToZero(altitude),
+                    "rpm" to rpm,
+                    "latitude" to latLng.latitude.toString(),
+                    "longitude" to latLng.longitude.toString(),
+                ).mapValues { it.value.ifBlank { "null" } }
+
+                Log.d("MQTT Payload", payload.toString())
+                Log.d("Send to ","Beta/${prefManager.getSelectedMotorcycleId()}/position")
+
+                MQTTHelper(context).publishMessage(
+                    "Beta/${prefManager.getSelectedMotorcycleId()}/position",
+                    JSONObject(payload).toString(2)
+                )
+
+                val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                csvData.value.add("$time,$speed,$altitude,${stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")},${latLng.latitude},${latLng.longitude}")
+            }
+
+            markerKey = "$speed-$rpm-$altitude"
+
+            return
+        }
+
+        val id = dataIds[index]
+        val data = byteArrayOf(0x01, 0x01, 0x02, (id shr 8).toByte(), (id and 0xFF).toByte())
+        val key = "fetch_$id"
+
+        val handler = Handler(Looper.getMainLooper())
+        var callbackCalled = false
+
+        val callback: (Byte, ByteArray) -> Unit = { rliID, fullData ->
+            if (rliID.toInt() == id) {
+                callbackCalled = true
+                btViewModel.removeOnDataReceivedCallback(key)
+
+                val value = parseSensorValue(id, fullData)
+                if (value != null) {
+                    result[id] = value
+                    updateViewModel(detailDeviceViewModel, id, value)
+                }
+
+                fetchAndContinue(index+1, result, latLng, speed)
+            }
+        }
+
+        btViewModel.addOnDataReceivedCallback(key, callback)
+        btViewModel.sendCommandByteDES(data)
+
+        handler.postDelayed({
+            if (!callbackCalled) {
+                btViewModel.removeOnDataReceivedCallback(key)
+                fetchAndContinue(index+1, result, latLng, speed)
+            }
+        }, 200L)
+    }
+
+    Box (
+        modifier = Modifier
+            .fillMaxSize()
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(all = 24.dp)
+                    .weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(GrayDark)
+                ) {
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState,
+                        properties = MapProperties(isMyLocationEnabled = true),
+                    ) {
+                        if (currentLocation != null) {
+                            key(markerKey) {
+                                val markerLocation = remember { mutableStateOf(LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) }
+
+                                MarkerComposable(
+                                    state = MarkerState(position = markerLocation.value),
+                                    visible = mapInfoShown.value,
+                                    onClick = {
+                                        mapInfoShown.value = false
+                                        true
+                                    }
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(200.dp)
+                                            .padding(bottom = 58.dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(White)
+                                            .padding(12.dp)
+                                            .zIndex(1f)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(
+                                                prefManager.getSelectedMotorcycleName(),
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 15.sp,
+                                                color = DefaultTextBlack,
+                                                textAlign = TextAlign.Center,
+                                                maxLines = 1,
+                                                modifier = Modifier.fillMaxWidth()
+                                                    .padding(bottom = 6.dp)
+                                            )
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                            ) {
+                                                Text(
+                                                    "${stringResource(id = R.string.speed)}:",
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = GrayLight,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    speed.toString(),
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = DefaultBlue,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                )
+                                            }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                            ) {
+                                                Text(
+                                                    "${stringResource(id = R.string.rpm)}:",
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = GrayLight,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    rpm,
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = DefaultBlue,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                )
+                                            }
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                            ) {
+                                                Text(
+                                                    "${stringResource(id = R.string.altitude)}:",
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = GrayLight,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    altitude,
+                                                    fontWeight = FontWeight.Normal,
+                                                    fontSize = 14.sp,
+                                                    color = DefaultBlue,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                MarkerComposable(
+                                    state = MarkerState(position = markerLocation.value),
+                                    onClick = {
+                                        mapInfoShown.value = !mapInfoShown.value
+                                        true
+                                    }
+                                ) {
+                                    IconButton(
+                                        modifier = Modifier
+                                            .width(58.dp),
+                                        onClick = {
+                                            mapInfoShown.value = !mapInfoShown.value
+                                        }
+                                    ) {
+                                        Box(){
+                                            Image(
+                                                contentScale = ContentScale.Inside,
+                                                painter = rememberDrawablePainter(
+                                                    drawable = getDrawable(
+                                                        LocalContext.current,
+                                                        R.drawable.motorcycle_pin
+                                                    )
+                                                ),
+                                                contentDescription = "",
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    LocationUpdater(
+                        onLocationUpdate = { location ->
+                            val newLatLng = LatLng(location.latitude, location.longitude)
+                            currentLocation = newLatLng
+
+                            scope.launch {
+                                speed = location.speed
+                                val altitudeData = googleViewModel.getAltitude(location.latitude, location.longitude)
+                                altitude = altitudeData.first?.results?.get(0)?.elevation.toString()
+
+                                if (currentLocation != null) {
+                                    fetchAndContinue(latLng = currentLocation!!, speed = speed)
+                                }
+                            }
+                        },
+                        intervalMillis = 5000L
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp)
+            ){
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Gray)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 14.dp, vertical = 14.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        Box(
+                            modifier = Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                detailDeviceViewModel.setIsRecording(!isRecording)
+
+                                scope.launch {
+                                    if(isRecording) {
+                                        motorViewModel.startTracking(prefManager.getSelectedMotorcycleId())
+                                    } else {
+                                        if (motorViewModel.trackingTransactionID.value?.data?.transactionKey != null) {
+                                            if (motorViewModel.trackingTransactionID.value != null) {
+                                                motorViewModel.stopTracking(prefManager.getSelectedMotorcycleId(), motorViewModel.trackingTransactionID.value?.data?.transactionKey!!)
+                                            }
+
+                                            motorViewModel.getTrackingHistory(motorViewModel.trackingTransactionID.value?.data?.transactionKey!!)
+                                        }
+
+                                        showSaveTrackingMotorcycleDialog.value = true
+                                    }
+                                }
+                            }
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Image(
+                                    bitmap = ImageBitmap.imageResource( if (isRecording) R.drawable.ic_stop_record else R.drawable.ic_start_record),
+                                    contentDescription = "",
+                                    modifier = Modifier
+                                        .height(52.dp)
+                                        .width(52.dp),
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(if (isRecording) stringResource(R.string.recording) else stringResource(R.string.start_record), style = MaterialTheme.typography.button)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (showSaveTrackingMotorcycleDialog.value) {
+            SaveTrackingMotorcycleDialog (openDialog = showSaveTrackingMotorcycleDialog, csvData) { filename ->
+                scope.launch {
+                    showSaveTrackingMotorcycleDialog.value = false
+                    csvData.value = mutableListOf()
+                    Toast.makeText(context, filename, Toast.LENGTH_SHORT).show()
+                    showSaveTrackingMotorcycleDialog.value = false
+                }
             }
         }
     }

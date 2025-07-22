@@ -116,10 +116,14 @@ fun TrackingScreen(
 
     var altitude by remember { mutableStateOf("-") }
     var speed by remember { mutableFloatStateOf(0.0f) }
+    var rpm by remember { mutableStateOf("-") }
+    var markerKey by remember { mutableStateOf("-") }
 
     val showSaveTrackingMotorcycleDialog = remember {
         mutableStateOf(false)
     }
+
+    val mapInfoShown = remember { mutableStateOf(false) }
 
     val csvData: MutableState<MutableList<String>> = remember { mutableStateOf(mutableListOf()) }
 
@@ -157,36 +161,36 @@ fun TrackingScreen(
         constants.RLI_ENGINE_SPEED,
     )
 
-    var finishedFetch = true
 
     fun fetchAndContinue(index: Int = 0, result: MutableMap<Int, String> = mutableMapOf(), latLng: LatLng, speed: Float) {
-        if (!finishedFetch) {
-            return
-        }
+        Log.d("fetchAndContinue", "start")
+        markerKey = "$speed-$rpm-$altitude"
 
-        finishedFetch = false
+        if (index >= dataIds.size) {
+            Log.d("fetchAndContinue", "end")
+            rpm = stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")
+            if (isRecording) {
+                val payload = mapOf(
+                    "speed" to speed.toString(),
+                    "altitude" to stripToZero(altitude),
+                    "rpm" to rpm,
+                    "latitude" to latLng.latitude.toString(),
+                    "longitude" to latLng.longitude.toString(),
+                ).mapValues { it.value.ifBlank { "null" } }
 
-        if (index == dataIds.size - 1) {
-            val payload = mapOf(
-                "speed" to speed.toString(),
-                "altitude" to stripToZero(altitude),
-                "rpm" to stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0"),
-                "latitude" to latLng.latitude.toString(),
-                "longitude" to latLng.longitude.toString(),
-            ).mapValues { it.value.ifBlank { "null" } }
+                Log.d("MQTT Payload", payload.toString())
+                Log.d("Send to ","Beta/${prefManager.getSelectedMotorcycleId()}/position")
 
-            Log.d("MQTT Payload", payload.toString())
-            Log.d("Send to ","Beta/${prefManager.getSelectedMotorcycleId()}/position")
+                MQTTHelper(context).publishMessage(
+                    "Beta/${prefManager.getSelectedMotorcycleId()}/position",
+                    JSONObject(payload).toString(2)
+                )
 
-            MQTTHelper(context).publishMessage(
-                "Beta/${prefManager.getSelectedMotorcycleId()}/position",
-                JSONObject(payload).toString(2)
-            )
-            finishedFetch = true
+                val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+                csvData.value.add("$time,$speed,$altitude,${stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")},${latLng.latitude},${latLng.longitude}")
+            }
 
-
-            val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-            csvData.value.add("$time,$speed,$altitude,${stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")},${latLng.latitude},${latLng.longitude}")
+            markerKey = "$speed-$rpm-$altitude"
 
             return
         }
@@ -208,6 +212,8 @@ fun TrackingScreen(
                     result[id] = value
                     updateViewModel(detailDeviceViewModel, id, value)
                 }
+
+                fetchAndContinue(index+1, result, latLng, speed)
             }
         }
 
@@ -217,6 +223,7 @@ fun TrackingScreen(
         handler.postDelayed({
             if (!callbackCalled) {
                 btViewModel.removeOnDataReceivedCallback(key)
+                fetchAndContinue(index+1, result, latLng, speed)
             }
         }, 200L)
     }
@@ -301,9 +308,8 @@ fun TrackingScreen(
                         properties = MapProperties(isMyLocationEnabled = true),
                     ) {
                         if (currentLocation != null) {
-                            key(altitude) {
+                            key(markerKey) {
                                 val markerLocation = remember { mutableStateOf(LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) }
-                                val mapInfoShown = remember { mutableStateOf(false) }
 
                                 MarkerComposable(
                                     state = MarkerState(position = markerLocation.value),
@@ -351,7 +357,7 @@ fun TrackingScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
-                                                    "-",
+                                                    speed.toString(),
                                                     fontWeight = FontWeight.Normal,
                                                     fontSize = 14.sp,
                                                     color = DefaultBlue,
@@ -374,7 +380,7 @@ fun TrackingScreen(
                                                 )
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Text(
-                                                    "-",
+                                                    rpm,
                                                     fontWeight = FontWeight.Normal,
                                                     fontSize = 14.sp,
                                                     color = DefaultBlue,
@@ -451,7 +457,7 @@ fun TrackingScreen(
                                 val altitudeData = googleViewModel.getAltitude(location.latitude, location.longitude)
                                 altitude = altitudeData.first?.results?.get(0)?.elevation.toString()
 
-                                if (currentLocation != null && isRecording) {
+                                if (currentLocation != null) {
                                     fetchAndContinue(latLng = currentLocation!!, speed = speed)
                                 }
                             }
