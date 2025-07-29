@@ -66,7 +66,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -162,7 +161,7 @@ fun DetailDeviceScreen(
         stringResource(R.string.engine_info),
         "+/- IDLE",
         stringResource(R.string.engine_diagnose),
-        stringResource(R.string.tracking).uppercase(),
+        "MAPS",
     )
     val icons = listOf(
         painterResource(id = R.drawable.ic_tab1),
@@ -471,16 +470,16 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(stringResource(R.string.engine_data), style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
+                    Text("ENGINE DATA", style = MaterialTheme.typography.body1, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(24.dp))
-                    DetailDataItem(title = stringResource(R.string.rpm), value = rpm, suffix = stringResource(R.string.rpm_unit))
-                    DetailDataItem(title = stringResource(R.string.throttle), value = gasPosition, suffix = stringResource(R.string.percent_unit))
-                    DetailDataItem(title = stringResource(R.string.spark_adv), value = actuatedSpark, suffix = stringResource(R.string.degree_unit))
-                    DetailDataItem(title = stringResource(R.string.engine_temp), value = engineCoolant, suffix = stringResource(R.string.celsius_unit))
-                    DetailDataItem(title = stringResource(R.string.air_temp), value = airTemp, suffix = stringResource(R.string.celsius_unit))
-                    DetailDataItem(title = stringResource(R.string.atm_pressure), value = atmospherePressure, suffix = stringResource(R.string.mbar_unit))
-                    DetailDataItem(title = stringResource(R.string.op_time), value = operatingHours, suffix = stringResource(R.string.hour_unit))
-                    DetailDataItem(title = stringResource(R.string.battery_voltage), value = batteryVoltage, suffix = stringResource(R.string.volt_unit))
+                    DetailDataItem(title = "RPM", value = rpm, suffix = stringResource(R.string.rpm_unit))
+                    DetailDataItem(title = "THROTTLE", value = gasPosition, suffix = stringResource(R.string.percent_unit))
+                    DetailDataItem(title = "SPARK ADV", value = actuatedSpark, suffix = stringResource(R.string.degree_unit))
+                    DetailDataItem(title = "ENGINE TEMP.", value = engineCoolant, suffix = stringResource(R.string.celsius_unit))
+                    DetailDataItem(title = "AIR TEMP.", value = airTemp, suffix = stringResource(R.string.celsius_unit))
+                    DetailDataItem(title = "ATM. PRESSURE", value = atmospherePressure, suffix = stringResource(R.string.mbar_unit))
+                    DetailDataItem(title = "OP. TIME", value = operatingHours, suffix = stringResource(R.string.hour_unit))
+                    DetailDataItem(title = "BATTERY VOLTAGE", value = batteryVoltage, suffix = stringResource(R.string.volt_unit))
                 }
             }
 

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_22Jul2025</string>
+    <string name="app_name">Betamotor_24Jul2025</string>
     <string name="connection_timeout">Verbindungs-Timeout</string>
     <string name="nearby_bike">Motorräder in der Nähe</string>
     <string name="no_name">Kein Name</string>
@@ -91,7 +91,7 @@
     <string name="idle_target">LEERLAUF-ZIEL</string>
     
     <!-- Units -->
-    <string name="rpm_unit">U/min</string>
+    <string name="rpm_unit">rpm</string>
     <string name="percent_unit">%</string>
     <string name="degree_unit">°</string>
     <string name="celsius_unit">°C</string>
