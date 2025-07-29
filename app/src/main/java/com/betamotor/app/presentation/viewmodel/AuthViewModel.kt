@@ -1,5 +1,6 @@
 package com.betamotor.app.presentation.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner

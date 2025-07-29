@@ -34,6 +34,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +79,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import org.json.JSONObject
 import com.betamotor.app.theme.RobotoCondensed
+import kotlinx.coroutines.launch
 import org.intellij.lang.annotations.JdkConstants.HorizontalAlignment
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -88,75 +90,12 @@ fun TrackingListScreen(
     val context = LocalContext.current
     val logger = LocalLogging(context)
     val viewModel = hiltViewModel<MotorcycleViewModel>()
-    val bluetoothViewModel = hiltViewModel<BluetoothViewModel>()
     val isLoading = viewModel.isLoading.collectAsState()
-    val myMotorcycles = viewModel.motorcycles.collectAsState()
+    val motorcycleAccessories = viewModel.motorcycleAccessories.collectAsState()
     val prefManager = PrefManager(context)
-    val isConnecting = remember { mutableStateOf(false) }
-    val selectedDevice = remember { mutableStateOf<MotorcycleItem?>(null) }
-    val btState by bluetoothViewModel.state.collectAsState()
     val vinInput = remember { mutableStateOf("") }
 
-    var checkedPermission by remember { mutableStateOf(false) }
-    val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) listOf(
-        Manifest.permission.BLUETOOTH_CONNECT,
-        Manifest.permission.BLUETOOTH_SCAN,
-    ) else listOf(
-        Manifest.permission.BLUETOOTH,
-    )
-    val bluetoothPermissionState = rememberMultiplePermissionsState(permissions = permissions)
-    var showPermissionDialog by remember { mutableStateOf(false) }
-
-    fun isPermissionGranted(): Boolean {
-        val denied = bluetoothPermissionState.permissions.filter {
-            !it.status.isGranted
-        }
-
-        return denied.isEmpty()
-    }
-
-    LaunchedEffect(key1 = Unit) {
-        prefManager.clearSelectedMotorcycleId()
-        viewModel.getMotorcycles()
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !checkedPermission) {
-        CheckPermission(onPermissionGranted = {
-            checkedPermission = true
-        }, onPermissionDenied = {
-            checkedPermission = true
-            showPermissionDialog = true
-        })
-    }
-
-    LaunchedEffect(btState.isConnectionAuthorized) {
-        // currently connecting to device
-        if (!btState.isConnectionAuthorized) {
-            return@LaunchedEffect
-        }
-
-        if (selectedDevice.value?.deviceId == null) {
-            return@LaunchedEffect
-        }
-
-        if (selectedDevice.value?.macAddress == null)
-        {
-            return@LaunchedEffect
-        }
-
-        prefManager.setSelectedMotorcycleId(selectedDevice.value!!.deviceId)
-        prefManager.setMacAddress(selectedDevice.value!!.macAddress)
-        prefManager.setSelectedMotorcycleName(selectedDevice.value!!.name)
-
-        MQTTHelper(context).publishMessage("BetaDebug", JSONObject(
-            mapOf(
-                "deviceId" to selectedDevice.value!!.deviceId,
-                "macAddress" to selectedDevice.value!!.macAddress,
-                "action" to "moving to detailScreen from myMotorcycle's isConnectionAuthorized = true",
-            )
-        ).toString())
-        navController.navigate(Screen.DetailDevice.route)
-    }
+    val scope = rememberCoroutineScope()
 
     Box (
         modifier = Modifier
@@ -246,7 +185,9 @@ fun TrackingListScreen(
                     style = MaterialTheme.typography.button.copy(textAlign = TextAlign.Center),
                     modifier = Modifier
                         .clickable {
-                            navController.navigate(Screen.DetailDevice.route)
+                            scope.launch {
+                                viewModel.getMotorcycleAccessories(vinInput.value)
+                            }
                         }
                         .background(color = Green, shape = RoundedCornerShape(8.dp))
                         .padding(vertical = 18.dp, horizontal = 22.dp)
@@ -270,68 +211,32 @@ fun TrackingListScreen(
                     )
                 }
             } else {
-                LazyColumn(
+                Column(
                     modifier = Modifier.padding(horizontal = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    items(myMotorcycles.value) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF353535))
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                                .fillMaxWidth()
-                                .clickable {
-                                    if (!isPermissionGranted()) {
-                                        bluetoothPermissionState.launchMultiplePermissionRequest()
-                                        return@clickable
+                    if (isLoading.value) {
+                        LoadingIndicator()
+                    } else {
+                        if (motorcycleAccessories.value != null) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF353535))
+                                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        prefManager.setSelectedMotorcycleId(vinInput.value)
+                                        navController.navigate(Screen.DetailDevice.route)
                                     }
-
-                                    isConnecting.value = true
-                                    selectedDevice.value = it
-                                    bluetoothViewModel.connectDevice(
-                                        BluetoothDevice(
-                                            "",
-                                            it.macAddress,
-                                            it.name,
-                                        ),
-                                        "",
-                                        callback = { success, message ->
-                                            if (success) {
-                                                return@connectDevice
-                                            } else {
-                                                context
-                                                    .findActivity()
-                                                    ?.runOnUiThread {
-                                                        Toast
-                                                            .makeText(
-                                                                context,
-                                                                message,
-                                                                Toast.LENGTH_LONG
-                                                            )
-                                                            .show()
-                                                    }
-                                            }
-
-                                            isConnecting.value = false
-                                            selectedDevice.value = null
-                                        },
-                                        onDataReceived = {}
-                                    )
+                            ) {
+                                Column {
+                                    Text(motorcycleAccessories.value!!.modelDescription ?: "-", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = White),)
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(motorcycleAccessories.value!!.serialID ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
                                 }
-                        ) {
-                            Column {
-                                Text(it.name, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = White),)
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(it.motorcycleType?.name ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
-                            }
-
-                            if (isConnecting.value && selectedDevice.value?.macAddress == it.macAddress) {
-                                LoadingIndicator()
-                            } else {
-                                Text(it.deviceId, style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
                             }
                         }
                     }

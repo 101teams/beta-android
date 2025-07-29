@@ -14,6 +14,7 @@ object HttpRoutes {
     const val START_TRACKING_MOTORCYCLE = "${Constants.API_URL}${v1}/device-maps-tracking/start"
     const val STOP_TRACKING_MOTORCYCLE = "${Constants.API_URL}${v1}/device-maps-tracking/stop"
     const val HISTORY_TRACKING_MOTORCYCLE = "${Constants.API_URL}${v1}/device-maps-tracking/history"
+    const val MOTORCYCLE_ACCESSORIES = "${Constants.API_URL}${v1}/motorcycle-acc"
 
     const val GOOGLE_ALTITUDE = "https://maps.googleapis.com/maps/api/elevation/json"
 }

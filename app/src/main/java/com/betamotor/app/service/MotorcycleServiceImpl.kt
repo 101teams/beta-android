@@ -9,6 +9,8 @@ import com.betamotor.app.data.api.motorcycle.GenericResponse
 import com.betamotor.app.data.api.motorcycle.GenericResponseErrorMessage
 import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingDataItem
 import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingResponse
+import com.betamotor.app.data.api.motorcycle.MotorcycleAccessoriesData
+import com.betamotor.app.data.api.motorcycle.MotorcycleAccessoriesResponse
 import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.api.motorcycle.MotorcycleListResponse
 import com.betamotor.app.data.api.motorcycle.MotorcycleTypesResponse
@@ -209,6 +211,36 @@ class MotorcycleServiceImpl(
                 url(HttpRoutes.HISTORY_TRACKING_MOTORCYCLE + "/${transactionID}")
                 contentType(ContentType.Application.Json)
             }.body<HistoryMotorcycleTrackingResponse>()
+
+            Pair(response.data, "")
+        } catch (e: RedirectResponseException) {
+            Pair(null, "Error 3xx: ${e.response.status.description}")
+        } catch (e: ClientRequestException) {
+            val responseAsErrorResponse = e.response.body<ErrorResponse>()
+            if (responseAsErrorResponse.errors.isNullOrEmpty()) {
+                val response = e.response.body<ErrorResponse2>()
+                return Pair(null, response.message.toString())
+            } else {
+                return Pair(null, responseAsErrorResponse.errors[0]?.message!!)
+            }
+        } catch (e: ServerResponseException) {
+            try{
+                val response = e.response.body<ErrorResponse>()
+                Pair(null, response.errors?.get(0)?.message!!)
+            } catch (er: Exception) {
+                Pair(null, "Error 5xx: ${e.response.status.description}")
+            }
+        } catch (e: Exception) {
+            Pair(null, "Error: ${e.message}")
+        }
+    }
+
+    override suspend fun getMotorcyclesAccessories(vin: String): Pair<MotorcycleAccessoriesData?, String> {
+        return try {
+            val response = client.get {
+                url("${HttpRoutes.MOTORCYCLE_ACCESSORIES}?vin=$vin")
+                contentType(ContentType.Application.Json)
+            }.body<MotorcycleAccessoriesResponse>()
 
             Pair(response.data, "")
         } catch (e: RedirectResponseException) {

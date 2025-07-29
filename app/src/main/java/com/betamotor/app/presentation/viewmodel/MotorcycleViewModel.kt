@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
 import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingDataItem
+import com.betamotor.app.data.api.motorcycle.MotorcycleAccessoriesData
 import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.api.motorcycle.MotorcycleTypeItem
 import com.betamotor.app.data.api.motorcycle.StarMotorcycleTrackingResponse
@@ -35,6 +36,9 @@ class MotorcycleViewModel @Inject constructor(
 
     private val _historyMotorcycleTracking = MutableStateFlow<List<HistoryMotorcycleTrackingDataItem?>>(emptyList())
     val historyMotorcycleTracking: StateFlow<List<HistoryMotorcycleTrackingDataItem?>> = _historyMotorcycleTracking
+
+    private val _motorcycleAccessories = MutableStateFlow<MotorcycleAccessoriesData?>(null)
+    val motorcycleAccessories: StateFlow<MotorcycleAccessoriesData?> = _motorcycleAccessories
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -193,6 +197,29 @@ class MotorcycleViewModel @Inject constructor(
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    suspend fun getMotorcycleAccessories(vin: String): Boolean {
+        _isLoading.value = true
+
+        try {
+            val resp = apiService.getMotorcyclesAccessories(vin)
+
+            if (resp.first == null) {
+                throw Exception(resp.second)
+            }
+
+            _motorcycleAccessories.value = resp.first
+
+            _error.value = null
+
+            return true
+        } catch (e: Exception) {
+            _error.value = "Failed to start tracking: ${e.message}"
+            return false
+        } finally {
+            _isLoading.value = false
         }
     }
 }
