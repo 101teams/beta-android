@@ -69,6 +69,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-location:21.0.1")
     implementation ("com.google.maps.android:maps-compose:4.3.3")
     implementation ("com.google.android.gms:play-services-maps:18.2.0")
+    implementation ("org.maplibre.gl:android-sdk:11.11.0")
     kapt("com.google.dagger:hilt-compiler:2.48")
     kapt("androidx.hilt:hilt-compiler:1.2.0")
 

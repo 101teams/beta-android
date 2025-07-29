@@ -229,6 +229,7 @@ fun TrackingListScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         prefManager.setSelectedMotorcycleId(vinInput.value)
+                                        prefManager.setSelectedMotorcycleName(motorcycleAccessories.value?.modelDescription ?: "-")
                                         navController.navigate(Screen.DetailDevice.route)
                                     }
                             ) {

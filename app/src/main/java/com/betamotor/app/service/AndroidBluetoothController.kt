@@ -530,10 +530,10 @@ class AndroidBluetoothController(
                     gatt?.services?.toList() ?: emptyList()
                 logger.writeLog("Services count => ${gattServices.size}")
 
-//                if (BuildConfig.DEBUG) {
-//                    val byteArr = ByteArray(0)
-//                    onActiveAccessGranted(byteArr)
-//                }
+                if (BuildConfig.DEBUG) {
+                    val byteArr = ByteArray(0)
+                    onActiveAccessGranted(byteArr)
+                }
 
                 for (gattService in gattServices) {
                     setServiceAndChars(gattService)
@@ -778,11 +778,11 @@ class AndroidBluetoothController(
             this@AndroidBluetoothController.password = password
 
             // uses transport_le because sometime gatt error 133 when not using it
-//            gatt = if (BuildConfig.DEBUG) {
-//                btDevice.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_AUTO)
-//            } else {
+            gatt = if (BuildConfig.DEBUG) {
+                btDevice.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_AUTO)
+            } else {
                 btDevice.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
-//            }
+            }
             clearServicesCache()
 
             fun connectDeviceCallback(isSuccess: Boolean, message: String) {
@@ -870,44 +870,44 @@ class AndroidBluetoothController(
     }
 
     override fun sendCommandByteDES(command: ByteArray) {
-//        if (BuildConfig.DEBUG) { // simulate engine data on debug mode
-//            if (command[0].toInt() == 0x01 && command[1].toInt() == 0x01) { // engine data
-//                Log.d("sendCommandByteDES DEBUG", "1")
-//                val random = java.util.Random()
-//                val rpmValue = random.nextInt(65536)
-//                val gasValue = random.nextInt(65536)
-//
-//                val rpm = byteArrayOf(0x01, 0x01, 0x00, 0x04, 0x00, 0x01, (rpmValue shr 8).toByte(), (rpmValue and 0xFF).toByte(), 0x55)
-//                val gas = byteArrayOf(0x01, 0x01, 0x00, 0x04, 0x00, 0x02, (gasValue shr 8).toByte(), (gasValue and 0xFF).toByte(), 0x47)
-//
-//                if (
-//                    command[3] == ((constants.RLI_GAS_POSITION shr 8) and 0xFF).toByte() &&
-//                    command[4] == (constants.RLI_GAS_POSITION and 0xFF).toByte()
-//                    ) {
-//                    onDataReadReceived(gas, DEScharUuidRx)
-//                }
-//
-//                if (
-//                    command[3] == ((constants.RLI_ENGINE_SPEED shr 8) and 0xFF).toByte() &&
-//                    command[4] == (constants.RLI_ENGINE_SPEED and 0xFF).toByte()
-//                    ) {
-//                    onDataReadReceived(rpm, DEScharUuidRx)
-//                }
-//            } else if (command[0].toInt() == 0x00 && command[1].toInt() == 0x01) { // DTC
-//                Log.d("sendCommandByteDES DEBUG", "2")
-//                val data = byteArrayOf(
-//                    0x00, 0x01, 0x00, 0x6E.toByte(), 0x01, 0x05, 0x62, 0x00, 0x00, 0x00,
-//                    0x00, 0x00, 0x01, 0x20, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00,
-//                    0x00, 0x01, 0x41, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x30, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
-//                    0x01, 0x35, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x15, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-//                    0x10, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0x85.toByte(),
-//                    0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x02, 0x64,
-//                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-//                )
-//
-//                onDataReadReceived(data, DEScharUuidRx)
-//            }
-//        }
+        if (BuildConfig.DEBUG) { // simulate engine data on debug mode
+            if (command[0].toInt() == 0x01 && command[1].toInt() == 0x01) { // engine data
+                Log.d("sendCommandByteDES DEBUG", "1")
+                val random = java.util.Random()
+                val rpmValue = random.nextInt(65536)
+                val gasValue = random.nextInt(65536)
+
+                val rpm = byteArrayOf(0x01, 0x01, 0x00, 0x04, 0x00, 0x01, (rpmValue shr 8).toByte(), (rpmValue and 0xFF).toByte(), 0x55)
+                val gas = byteArrayOf(0x01, 0x01, 0x00, 0x04, 0x00, 0x02, (gasValue shr 8).toByte(), (gasValue and 0xFF).toByte(), 0x47)
+
+                if (
+                    command[3] == ((constants.RLI_GAS_POSITION shr 8) and 0xFF).toByte() &&
+                    command[4] == (constants.RLI_GAS_POSITION and 0xFF).toByte()
+                    ) {
+                    onDataReadReceived(gas, DEScharUuidRx)
+                }
+
+                if (
+                    command[3] == ((constants.RLI_ENGINE_SPEED shr 8) and 0xFF).toByte() &&
+                    command[4] == (constants.RLI_ENGINE_SPEED and 0xFF).toByte()
+                    ) {
+                    onDataReadReceived(rpm, DEScharUuidRx)
+                }
+            } else if (command[0].toInt() == 0x00 && command[1].toInt() == 0x01) { // DTC
+                Log.d("sendCommandByteDES DEBUG", "2")
+                val data = byteArrayOf(
+                    0x00, 0x01, 0x00, 0x6E.toByte(), 0x01, 0x05, 0x62, 0x00, 0x00, 0x00,
+                    0x00, 0x00, 0x01, 0x20, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00,
+                    0x00, 0x01, 0x41, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x30, 0x62, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    0x01, 0x35, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x15, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                    0x10, 0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0x85.toByte(),
+                    0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x02, 0x64,
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+                )
+
+                onDataReadReceived(data, DEScharUuidRx)
+            }
+        }
 
         val DESWX = DESWX ?: return
 

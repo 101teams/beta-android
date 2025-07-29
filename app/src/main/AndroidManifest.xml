@@ -40,10 +40,6 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31" >
 
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBQ-0A4FEIwVu9Z0o_ev54Ru2lSbRalSHE" />
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

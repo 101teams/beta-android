@@ -1,11 +1,15 @@
 package com.betamotor.app.presentation.screen
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View
+import android.widget.FrameLayout
 import android.widget.Toast
-import androidx.appcompat.content.res.AppCompatResources.getDrawable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -59,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
@@ -68,7 +73,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.core.content.ContextCompat.getDrawable
+import androidx.core.content.res.ResourcesCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -84,11 +92,8 @@ import com.betamotor.app.presentation.component.SaveTrackingMotorcycleDialog
 import com.betamotor.app.presentation.component.observeLifecycle
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
 import com.betamotor.app.presentation.viewmodel.DetailDeviceViewModel
-import com.betamotor.app.presentation.viewmodel.GoogleViewModel
 import com.betamotor.app.presentation.viewmodel.MotorcycleViewModel
 import com.betamotor.app.theme.Black
-import com.betamotor.app.theme.DefaultBlue
-import com.betamotor.app.theme.DefaultTextBlack
 import com.betamotor.app.theme.Gray
 import com.betamotor.app.theme.GrayDark
 import com.betamotor.app.theme.GrayLight
@@ -97,19 +102,21 @@ import com.betamotor.app.theme.RobotoCondensed
 import com.betamotor.app.theme.White
 import com.betamotor.app.utils.MQTTHelper
 import com.betamotor.app.utils.PrefManager
-import com.google.accompanist.drawablepainter.rememberDrawablePainter
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MarkerComposable
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import org.maplibre.android.MapLibre
+import org.maplibre.android.WellKnownTileServer
+import org.maplibre.android.annotations.IconFactory
+import org.maplibre.android.annotations.MarkerOptions
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.graphics.scale
 
 @Composable
 fun DetailDeviceScreen(
@@ -495,7 +502,7 @@ fun page1(btViewModel: BluetoothViewModel, detailDeviceViewModel: DetailDeviceVi
                 onClick = {
                     goBackToHome()
                 },
-                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent,),
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
                 border = BorderStroke(1.dp, Color.Red),
             ) {
                 Text(stringResource(R.string.close_connection), style = MaterialTheme.typography.button, fontSize = 18.sp, color = Color.Red)
@@ -916,7 +923,7 @@ fun page3(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
         ) {
             Row (
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp,),
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
             ) {
                 Text(
                     text = stringResource(R.string.apply),
@@ -1121,7 +1128,6 @@ fun page4(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
 
 @Composable
 fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Context, navController: NavController) {
-    val googleViewModel = hiltViewModel<GoogleViewModel>()
     val detailDeviceViewModel = hiltViewModel<DetailDeviceViewModel>()
     val motorViewModel = hiltViewModel<MotorcycleViewModel>()
 
@@ -1130,7 +1136,6 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
 
     val isRecording by detailDeviceViewModel.isRecording.collectAsState()
 
-    val cameraPositionState = rememberCameraPositionState()
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
 
     val scope = rememberCoroutineScope()
@@ -1138,24 +1143,14 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
     var altitude by remember { mutableStateOf("-") }
     var speed by remember { mutableFloatStateOf(0.0f) }
     var rpm by remember { mutableStateOf("-") }
-    var markerKey by remember { mutableStateOf("-") }
 
     val showSaveTrackingMotorcycleDialog = remember {
         mutableStateOf(false)
     }
 
-    val mapInfoShown = remember { mutableStateOf(false) }
+    val mapLibreMapState = remember { mutableStateOf<MapLibreMap?>(null) }
 
     val csvData: MutableState<MutableList<String>> = remember { mutableStateOf(mutableListOf()) }
-
-    LaunchedEffect(currentLocation) {
-        if (currentLocation != null) {
-            cameraPositionState.animate(
-                update = CameraUpdateFactory.newLatLngZoom(currentLocation!!, 16f),
-                durationMs = 1000
-            )
-        }
-    }
 
     fun stripToZero(raw: String): String {
         return if (raw.isBlank() || raw == "-") {
@@ -1169,13 +1164,76 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
         constants.RLI_ENGINE_SPEED,
     )
 
+    val mapView = remember {
+        MapLibre.getInstance(
+            context,
+            "uB0pgqMJlMnFQP0hEaIe",
+            WellKnownTileServer.MapTiler
+        )
+
+        MapView(context).apply {
+            onCreate(Bundle())
+        }
+    }
+
+    fun addMarkersToMap(latLng: LatLng) {
+        var mapInfoShown = false
+
+        // Clear marker
+        mapLibreMapState.value?.markers?.forEach {
+            if (it.isInfoWindowShown) {
+                mapInfoShown = true
+            }
+            mapLibreMapState.value?.removeMarker(it)
+        }
+
+        val bounds = mutableListOf<LatLng>()
+
+        var bitmapRed = getDrawable(
+            context,
+            R.drawable.motorcycle_pin
+        )?.toBitmap()
+
+        bitmapRed = bitmapRed?.scale(44, 60)
+
+        bounds.add(latLng)
+
+
+        val icon = IconFactory.getInstance(context)
+            .fromBitmap(bitmapRed!!)
+
+        // Use MarkerOptions and addMarker() to add a new marker in map
+        val markerOptions = MarkerOptions()
+            .position(latLng)
+            .title(prefManager.getSelectedMotorcycleName())
+            .snippet("Speed ${speed}\nRPM ${rpm}\nAltitude ${altitude}")
+            .icon(icon)
+        val marker = mapLibreMapState.value?.addMarker(markerOptions)
+
+        if (mapInfoShown) {
+            marker?.showInfoWindow(mapLibreMapState.value!!, mapView)
+        }
+
+        // Move camera to newly added annotations
+        mapLibreMapState.value?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation!!, 16.0), 1000)
+    }
+
+    LaunchedEffect(currentLocation) {
+        if (currentLocation != null) {
+            addMarkersToMap(currentLocation!!)
+        }
+    }
+
+    DisposableEffect(Unit) {
+        mapView.onStart()
+        onDispose {
+            mapView.onStop()
+            mapView.onDestroy()
+        }
+    }
 
     fun fetchAndContinue(index: Int = 0, result: MutableMap<Int, String> = mutableMapOf(), latLng: LatLng, speed: Float) {
-        Log.d("fetchAndContinue", "start")
-        markerKey = "$speed-$rpm-$altitude"
-
         if (index >= dataIds.size) {
-            Log.d("fetchAndContinue", "end")
             rpm = stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")
             if (isRecording) {
                 val payload = mapOf(
@@ -1197,8 +1255,6 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                 val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 csvData.value.add("$time,$speed,$altitude,${stripToZero(result[constants.RLI_ENGINE_SPEED] ?: "0")},${latLng.latitude},${latLng.longitude}")
             }
-
-            markerKey = "$speed-$rpm-$altitude"
 
             return
         }
@@ -1256,147 +1312,16 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
                         .clip(RoundedCornerShape(12.dp))
                         .background(GrayDark)
                 ) {
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState,
-                        properties = MapProperties(isMyLocationEnabled = true),
+
+                    AndroidView(
+                        factory = { mapView },
+                        modifier = Modifier,
                     ) {
-                        if (currentLocation != null) {
-                            key(markerKey) {
-                                val markerLocation = remember { mutableStateOf(LatLng(currentLocation!!.latitude, currentLocation!!.longitude)) }
-
-                                MarkerComposable(
-                                    state = MarkerState(position = markerLocation.value),
-                                    visible = mapInfoShown.value,
-                                    onClick = {
-                                        mapInfoShown.value = false
-                                        true
-                                    }
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(200.dp)
-                                            .padding(bottom = 58.dp)
-                                            .clip(RoundedCornerShape(4.dp))
-                                            .background(White)
-                                            .padding(12.dp)
-                                            .zIndex(1f)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                        ) {
-                                            Text(
-                                                prefManager.getSelectedMotorcycleName(),
-                                                fontWeight = FontWeight.Medium,
-                                                fontSize = 15.sp,
-                                                color = DefaultTextBlack,
-                                                textAlign = TextAlign.Center,
-                                                maxLines = 1,
-                                                modifier = Modifier.fillMaxWidth()
-                                                    .padding(bottom = 6.dp)
-                                            )
-
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                            ) {
-                                                Text(
-                                                    "${stringResource(id = R.string.speed)}:",
-                                                    fontWeight = FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = GrayLight,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1,
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    speed.toString(),
-                                                    fontWeight = FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = DefaultBlue,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1,
-                                                )
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                            ) {
-                                                Text(
-                                                    "${stringResource(id = R.string.rpm)}:",
-                                                    fontWeight = FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = GrayLight,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1,
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    rpm,
-                                                    fontWeight = FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = DefaultBlue,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1,
-                                                )
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                            ) {
-                                                Text(
-                                                    "${stringResource(id = R.string.altitude)}:",
-                                                    fontWeight = FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = GrayLight,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1,
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    altitude,
-                                                    fontWeight = FontWeight.Normal,
-                                                    fontSize = 14.sp,
-                                                    color = DefaultBlue,
-                                                    textAlign = TextAlign.Center,
-                                                    maxLines = 1,
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                MarkerComposable(
-                                    state = MarkerState(position = markerLocation.value),
-                                    onClick = {
-                                        mapInfoShown.value = !mapInfoShown.value
-                                        true
-                                    }
-                                ) {
-                                    IconButton(
-                                        modifier = Modifier
-                                            .width(58.dp),
-                                        onClick = {
-                                            mapInfoShown.value = !mapInfoShown.value
-                                        }
-                                    ) {
-                                        Box(){
-                                            Image(
-                                                contentScale = ContentScale.Inside,
-                                                painter = rememberDrawablePainter(
-                                                    drawable = getDrawable(
-                                                        LocalContext.current,
-                                                        R.drawable.motorcycle_pin
-                                                    )
-                                                ),
-                                                contentDescription = "",
-                                            )
-                                        }
-                                    }
-                                }
+                        mapView.getMapAsync { mapLibreMap ->
+                            mapLibreMapState.value = mapLibreMap
+                            mapLibreMap.setStyle(
+                                "https://api.maptiler.com/maps/019847a9-8274-7883-a749-325e7400e312/style.json?key=uB0pgqMJlMnFQP0hEaIe"
+                            ) {
                             }
                         }
                     }
@@ -1408,8 +1333,7 @@ fun page5(btViewModel: BluetoothViewModel, prefManager: PrefManager, context: Co
 
                             scope.launch {
                                 speed = location.speed
-                                val altitudeData = googleViewModel.getAltitude(location.latitude, location.longitude)
-                                altitude = altitudeData.first?.results?.get(0)?.elevation.toString()
+                                altitude = location.altitude.toString()
 
                                 if (currentLocation != null) {
                                     fetchAndContinue(latLng = currentLocation!!, speed = speed)
@@ -1520,7 +1444,7 @@ fun DetailDataItem(
                     )
                 }
                 .background(Color.Transparent)
-                .padding(vertical = 2.dp, horizontal = 6.dp,)
+                .padding(vertical = 2.dp, horizontal = 6.dp)
         ) {
             Row{
                 Text(value, style = MaterialTheme.typography.body2)
