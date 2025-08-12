@@ -1,5 +1,7 @@
 package com.betamotor.app.service
 
+import com.betamotor.app.data.api.motorcycle.BookmarkMotorcycleCreateRequest
+import com.betamotor.app.data.api.motorcycle.BookmarksItem
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
 import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingDataItem
 import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingResponse
@@ -21,4 +23,7 @@ interface MotorcycleService {
     suspend fun stopTracking(data: StopMotorcycleTrackingRequest): Pair<Boolean?, String>
     suspend fun getTrackingHistory(transactionID: String): Pair<List<HistoryMotorcycleTrackingDataItem>?, String>
     suspend fun getMotorcyclesAccessories(vin: String):Pair<MotorcycleAccessoriesData?, String>
+    suspend fun getBookmarksMotorcycles():Pair<List<BookmarksItem?>?, String>
+    suspend fun saveBookmarksMotorcycle(data: BookmarkMotorcycleCreateRequest): Pair<Boolean?, String>
+    suspend fun deleteBookmarksMotorcycle(id: Int): Pair<Boolean?, String>
 }

@@ -3,6 +3,7 @@ package com.betamotor.app.utils
 import android.content.Context
 import com.google.gson.Gson
 import com.betamotor.app.data.api.auth.User
+import androidx.core.content.edit
 
 class PrefManager(
     context: Context
@@ -84,14 +85,14 @@ class PrefManager(
         return sharedPreferences.getString("language", "it")!!
     }
 
-    fun setRememberMe(flag: Boolean) {
-        val editor = sharedPreferences.edit()
-        editor.putBoolean("remember_me", flag)
-        editor.apply()
+    fun setRememberMe(email: String) {
+        sharedPreferences.edit() {
+            putString("remember_me_email", email)
+        }
     }
 
-    fun getRememberMe(): Boolean {
-        return sharedPreferences.getBoolean("remember_me", false)
+    fun getRememberMe(): String {
+        return sharedPreferences.getString("remember_me_email", "") ?: ""
     }
 
     fun setMacAddress(macAddress: String) {

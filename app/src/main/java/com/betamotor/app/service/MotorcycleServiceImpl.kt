@@ -1,8 +1,13 @@
 package com.betamotor.app.service
 
+import android.util.Log
+import com.betamotor.app.data.api.BaseResponse
 import com.betamotor.app.data.api.ErrorResponse
 import com.betamotor.app.data.api.ErrorResponse2
 import com.betamotor.app.data.api.HttpRoutes
+import com.betamotor.app.data.api.motorcycle.BookmarkMotorcycleCreateRequest
+import com.betamotor.app.data.api.motorcycle.BookmarkMotorcycleResponse
+import com.betamotor.app.data.api.motorcycle.BookmarksItem
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRespData
 import com.betamotor.app.data.api.motorcycle.GenericResponse
@@ -22,7 +27,9 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.RedirectResponseException
+import io.ktor.client.plugins.ResponseException
 import io.ktor.client.plugins.ServerResponseException
+import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -87,6 +94,17 @@ class MotorcycleServiceImpl(
                 Pair(null, response.errors?.get(0)?.message!!)
             } catch (er: Exception) {
                 Pair(null, "Error 5xx: ${e.response.status.description}")
+            }
+        } catch (e: ResponseException) {
+            if (e.response.status.value == 401) {
+                Pair(null, "${e.response.status.value}")
+            } else {
+                try{
+                    val response = e.response.body<ErrorResponse>()
+                    Pair(null, response.errors?.get(0)?.message!!)
+                } catch (er: Exception) {
+                    Pair(null, "Error 5xx: ${e.response.status.description}")
+                }
             }
         } catch (e: Exception) {
             Pair(null, "Error: ${e.message}")
@@ -252,6 +270,102 @@ class MotorcycleServiceImpl(
                 return Pair(null, response.message.toString())
             } else {
                 return Pair(null, responseAsErrorResponse.errors[0]?.message!!)
+            }
+        } catch (e: ServerResponseException) {
+            try{
+                val response = e.response.body<ErrorResponse>()
+                Pair(null, response.errors?.get(0)?.message!!)
+            } catch (er: Exception) {
+                Pair(null, "Error 5xx: ${e.response.status.description}")
+            }
+        } catch (e: Exception) {
+            Pair(null, "Error: ${e.message}")
+        }
+    }
+
+    override suspend fun getBookmarksMotorcycles(): Pair<List<BookmarksItem?>?, String> {
+        return try {
+            val response = client.get {
+                url(HttpRoutes.MOTORCYCLE_BOOKMARKS)
+                contentType(ContentType.Application.Json)
+            }.body<BookmarkMotorcycleResponse>()
+
+            Pair(response.data?.bookmarks!!, "")
+        } catch (e: RedirectResponseException) {
+            Pair(null, "Error 3xx: ${e.response.status.description}")
+        } catch (e: ClientRequestException) {
+            val responseAsErrorResponse = e.response.body<ErrorResponse>()
+            if (responseAsErrorResponse.errors.isNullOrEmpty()) {
+                val response = e.response.body<ErrorResponse2>()
+                return Pair(null, response.message.toString())
+            } else {
+                return Pair(null, responseAsErrorResponse.errors[0]?.message!!)
+            }
+        } catch (e: ServerResponseException) {
+            try{
+                val response = e.response.body<ErrorResponse>()
+                Pair(null, response.errors?.get(0)?.message!!)
+            } catch (er: Exception) {
+                Pair(null, "Error 5xx: ${e.response.status.description}")
+            }
+        } catch (e: Exception) {
+            Pair(null, "Error: ${e.message}")
+        }
+    }
+
+    override suspend fun saveBookmarksMotorcycle(data: BookmarkMotorcycleCreateRequest): Pair<Boolean?, String> {
+        return try {
+            val response = client.post {
+                url(HttpRoutes.MOTORCYCLE_BOOKMARKS)
+                contentType(ContentType.Application.Json)
+                setBody(data)
+            }.body<GenericResponse<BaseResponse>>()
+            Pair(response.status == "success", "")
+        } catch (e: RedirectResponseException) {
+            Pair(null, "Error 3xx: ${e.response.status.description}")
+        } catch (e: ClientRequestException) {
+            if (e.response.body<GenericResponse<GenericResponseErrorMessage>>().data?.message != null) {
+                throw Exception(e.response.body<GenericResponse<GenericResponseErrorMessage>>().data?.message)
+            }
+
+            val responseAsErrorResponse = e.response.body<ErrorResponse>()
+            if (responseAsErrorResponse.errors.isNullOrEmpty()) {
+                val response = e.response.body<ErrorResponse2>()
+                throw Exception(response.message.toString())
+            } else {
+                throw Exception(responseAsErrorResponse.errors[0]?.message!!)
+            }
+        } catch (e: ServerResponseException) {
+            try{
+                val response = e.response.body<ErrorResponse>()
+                Pair(null, response.errors?.get(0)?.message!!)
+            } catch (er: Exception) {
+                Pair(null, "Error 5xx: ${e.response.status.description}")
+            }
+        } catch (e: Exception) {
+            Pair(null, "Error: ${e.message}")
+        }
+    }
+
+    override suspend fun deleteBookmarksMotorcycle(id: Int): Pair<Boolean?, String> {
+        return try {
+            val response = client.delete {
+                url("${HttpRoutes.MOTORCYCLE_BOOKMARKS}/$id")
+            }.body<GenericResponse<BaseResponse>>()
+            Pair(response.status == "success", "")
+        } catch (e: RedirectResponseException) {
+            Pair(null, "Error 3xx: ${e.response.status.description}")
+        } catch (e: ClientRequestException) {
+            if (e.response.body<GenericResponse<GenericResponseErrorMessage>>().data?.message != null) {
+                throw Exception(e.response.body<GenericResponse<GenericResponseErrorMessage>>().data?.message)
+            }
+
+            val responseAsErrorResponse = e.response.body<ErrorResponse>()
+            if (responseAsErrorResponse.errors.isNullOrEmpty()) {
+                val response = e.response.body<ErrorResponse2>()
+                throw Exception(response.message.toString())
+            } else {
+                throw Exception(responseAsErrorResponse.errors[0]?.message!!)
             }
         } catch (e: ServerResponseException) {
             try{

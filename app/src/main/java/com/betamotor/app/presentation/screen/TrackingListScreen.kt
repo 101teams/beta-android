@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.CircularProgressIndicator
+import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -57,11 +58,15 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.betamotor.app.R
+import com.betamotor.app.data.api.motorcycle.BookmarkMotorcycleCreateRequest
+import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
 import com.betamotor.app.data.api.motorcycle.MotorcycleItem
 import com.betamotor.app.data.bluetooth.BluetoothDevice
 import com.betamotor.app.findActivity
 import com.betamotor.app.navigation.Screen
+import com.betamotor.app.presentation.component.BookmarkMotorcycleDialog
 import com.betamotor.app.presentation.component.CheckPermission
+import com.betamotor.app.presentation.component.DialogDelete
 import com.betamotor.app.presentation.component.Input
 import com.betamotor.app.presentation.viewmodel.AuthViewModel
 import com.betamotor.app.presentation.viewmodel.BluetoothViewModel
@@ -90,12 +95,29 @@ fun TrackingListScreen(
     val context = LocalContext.current
     val logger = LocalLogging(context)
     val viewModel = hiltViewModel<MotorcycleViewModel>()
-    val isLoading = viewModel.isLoading.collectAsState()
+    val isSecondLoading = viewModel.isSecondLoading.collectAsState()
+    val isLoading = viewModel.isThirdLoading.collectAsState()
     val motorcycleAccessories = viewModel.motorcycleAccessories.collectAsState()
+    val bookmarkMotorcycles = viewModel.bookmarkMotorcycles.collectAsState()
     val prefManager = PrefManager(context)
     val vinInput = remember { mutableStateOf("") }
+    val bookmarked = remember { mutableStateOf(false) }
+    val deleteBookmarkID = remember { mutableStateOf(0) }
+
+    val showBookmarkMotorcycleDialog = remember {
+        mutableStateOf(false)
+    }
+
+    val showDeleteBookmarkDialog = remember {
+        mutableStateOf(false)
+    }
 
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        viewModel.getBookmarkMotorcycle()
+        viewModel.getMotorcycleTypes()
+    }
 
     Box (
         modifier = Modifier
@@ -194,55 +216,174 @@ fun TrackingListScreen(
                 )
             }
 
-            if (isLoading.value) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 32.dp)
-                ) {
-                    CircularProgressIndicator(
-                        color = White,
-                        strokeCap = StrokeCap.Round,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier
-                            .width(24.dp)
-                            .height(24.dp)
-                            .align(Alignment.Center)
-                    )
-                }
-            } else {
-                Column(
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    if (isLoading.value) {
+
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                if (isLoading.value) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Spacer(modifier = Modifier.height(24.dp))
                         LoadingIndicator()
-                    } else {
-                        if (motorcycleAccessories.value != null) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF353535))
-                                    .padding(horizontal = 12.dp, vertical = 10.dp)
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        prefManager.setSelectedMotorcycleId(vinInput.value)
-                                        prefManager.setSelectedMotorcycleName(motorcycleAccessories.value?.modelDescription ?: "-")
-                                        navController.navigate(Screen.DetailDevice.route)
-                                    }
-                            ) {
-                                Column {
-                                    Text(motorcycleAccessories.value!!.modelDescription ?: "-", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = White),)
-                                    Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(26.dp))
+                    }
+                } else {
+                    if (motorcycleAccessories.value != null) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF353535))
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                                .fillMaxWidth()
+                                .clickable {
+                                    prefManager.setSelectedMotorcycleId(vinInput.value)
+                                    prefManager.setSelectedMotorcycleName(motorcycleAccessories.value?.modelDescription ?: "-")
+                                    navController.navigate(Screen.DetailDevice.route)
+                                }
+                        ) {
+                            Column {
+                                Text(motorcycleAccessories.value!!.modelDescription ?: "-", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = White),)
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
                                     Text(motorcycleAccessories.value!!.serialID ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
+                                    IconButton(
+                                        modifier = Modifier
+                                            .width(24.dp)
+                                            .height(24.dp),
+                                        onClick = {
+                                            showBookmarkMotorcycleDialog.value = true
+                                        }) {
+                                        Icon(
+                                            painter = painterResource(id = if (bookmarked.value) {R.drawable.ic_bookmark_on_white} else {R.drawable.ic_bookmark_off_white}),
+                                            contentDescription = stringResource(R.string.setting),
+                                            tint = White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Text(stringResource(R.string.bookmark), style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, color = White),)
+                Divider(
+                    color = Color.White,
+                    thickness = 1.dp
+                )
+
+                if (isSecondLoading.value) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        LoadingIndicator()
+                    }
+                } else {
+                    if (bookmarkMotorcycles.value.isNotEmpty()) {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(bookmarkMotorcycles.value) {
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF353535))
+                                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            prefManager.setSelectedMotorcycleId(vinInput.value)
+                                            prefManager.setSelectedMotorcycleName(motorcycleAccessories.value?.modelDescription ?: "-")
+                                            navController.navigate(Screen.DetailDevice.route)
+                                        }
+                                ) {
+                                    Column {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                        ){
+                                            Text(it?.motorcycleName ?: "-", style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = White),)
+                                            IconButton(
+                                                modifier = Modifier
+                                                    .width(24.dp)
+                                                    .height(24.dp),
+                                                onClick = {
+                                                    deleteBookmarkID.value = it?.id ?: 0
+                                                    showDeleteBookmarkDialog.value = true
+                                                }) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_trashcan_white),
+                                                    contentDescription = stringResource(R.string.setting),
+                                                    tint = White,
+                                                    modifier = Modifier.size(24.dp)
+                                                )
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(10.dp))
+                                        Text(it?.vin ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
+                                        Text(it?.motorcycleType?.name ?: "-", style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = White),)
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+
+        if (showBookmarkMotorcycleDialog.value) {
+            BookmarkMotorcycleDialog(openDialog = showBookmarkMotorcycleDialog, vin = vinInput.value, onBookmark = {
+                showBookmarkMotorcycleDialog.value = false
+
+                scope.launch {
+                    val success = viewModel.saveBookmarksMotorcycle(
+                        BookmarkMotorcycleCreateRequest(
+                            vin = it.vin,
+                            motorcycleName = it.name,
+                            motorcycleTypeId = it.typeID,
+                        )
+                    )
+
+                    if (success) {
+                        viewModel.getBookmarkMotorcycle()
+                    }
+                }
+            })
+        }
+
+        if (showDeleteBookmarkDialog.value) {
+            DialogDelete(
+                onDismiss = {
+                    showDeleteBookmarkDialog.value = false
+                },
+                onClickCancel = {
+                    showDeleteBookmarkDialog.value = false
+                },
+                onClickContinue = {
+                    showDeleteBookmarkDialog.value = false
+                    scope.launch {
+                        val success = viewModel.deleteMotorcycle(deleteBookmarkID.value)
+
+                        if (success) {
+                            viewModel.getBookmarkMotorcycle()
+                        }
+                    }
+                }
+            )
         }
     }
 }

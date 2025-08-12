@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Checkbox
+import androidx.compose.material.CheckboxDefaults
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -80,18 +83,21 @@ fun LoginScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
-    val email = remember { mutableStateOf("") }
+
+    val prefManager = PrefManager(context)
+
+    val email = remember { mutableStateOf(prefManager.getRememberMe()) }
     val password = remember { mutableStateOf("") }
 
     val scope = rememberCoroutineScope()
     val viewModel = hiltViewModel<AuthViewModel>()
     val focusManager = LocalFocusManager.current
 
-    val prefManager = PrefManager(context)
-
     fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
         Toast.makeText(context, message, duration).show()
     }
+
+    var isRememberMeChecked by remember { mutableStateOf(prefManager.getRememberMe() != "") }
 
     fun login() {
         val request = AuthRequest(
@@ -115,6 +121,12 @@ fun LoginScreen(
         }
 
         focusManager.clearFocus()
+
+        if (isRememberMeChecked) {
+            prefManager.setRememberMe(email.value)
+        } else {
+            prefManager.setRememberMe("")
+        }
 
         scope.launch {
             viewModel.loading.value = true
@@ -194,16 +206,47 @@ fun LoginScreen(
                 imeAction = ImeAction.Done,
             )
 
-            TextButton(
-                modifier = Modifier.align(Alignment.End),
-                onClick = {
-                    navController.navigate(Screen.ForgotPassword.route)
-                },
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    text = stringResource(id = R.string.forgot_password),
-                    style = MaterialTheme.typography.body1,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clickable {
+                            isRememberMeChecked = !isRememberMeChecked
+                        }
+                        .padding(0.dp)
+                ) {
+                    Checkbox(
+                        modifier = Modifier
+                            .padding(0.dp),
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Green,
+                        ),
+                        checked = isRememberMeChecked,
+                        onCheckedChange = {
+                            isRememberMeChecked = it
+                        }
+                    )
+                    Text(
+                        text = stringResource(id = R.string.remember_me),
+                        style = MaterialTheme.typography.body1,
+                    )
+                }
+
+                TextButton(
+                    modifier = Modifier,
+                    onClick = {
+                        navController.navigate(Screen.ForgotPassword.route)
+                    },
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.forgot_password),
+                        style = MaterialTheme.typography.body1,
+                    )
+                }
             }
 
             Button(

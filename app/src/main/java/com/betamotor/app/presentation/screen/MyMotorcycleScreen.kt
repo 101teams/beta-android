@@ -2,6 +2,7 @@ package com.betamotor.app.presentation.screen
 
 import android.Manifest
 import android.os.Build
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -123,6 +124,15 @@ fun MyMotorcycleScreen(
     LaunchedEffect(key1 = Unit) {
         prefManager.clearSelectedMotorcycleId()
         viewModel.getMotorcycles()
+
+        if (viewModel.error.value == "401") {
+            authViewModel.logout()
+            navController.navigate(Screen.Login.route) {
+                popUpTo(navController.graph.id) {
+                    inclusive = true
+                }
+            }
+        }
     }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !checkedPermission) {

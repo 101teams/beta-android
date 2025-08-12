@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Betamotor_29Jul2025</string>
+    <string name="app_name">Betamotor_12Aug2025</string>
     <string name="connection_timeout">Verbindungs-Timeout</string>
     <string name="nearby_bike">Motorräder in der Nähe</string>
     <string name="no_name">Kein Name</string>
@@ -28,6 +28,7 @@
     <string name="password_recovery">Passwort-Wiederherstellung</string>
     <string name="forgot_password_enter_email">Bitte geben Sie Ihre E-Mail ein, um Ihr Passwort wiederherzustellen</string>
     <string name="forgot_password">Passwort Vergessen?</string>
+    <string name="remember_me">Erinnere dich an mich</string>
     <string name="motorcycle_model">Motorradmodelle</string>
     <string name="motorcycle_name">Motorradname</string>
     <string name="choose_motorcycle_model">Motorradmodelle Wählen</string>
@@ -119,4 +120,8 @@
 
     <string name="speed">Geschwindigkeit</string>
     <string name="altitude">Höhe</string>
+
+    <string name="bookmark">Lesezeichen</string>
+    <string name="are_you_sure">Bist du sicher?</string>
+    <string name="delete">Löschen</string>
 </resources>

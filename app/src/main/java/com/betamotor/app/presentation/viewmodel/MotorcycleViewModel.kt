@@ -3,6 +3,8 @@ package com.betamotor.app.presentation.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.betamotor.app.data.api.motorcycle.BookmarkMotorcycleCreateRequest
+import com.betamotor.app.data.api.motorcycle.BookmarksItem
 import com.betamotor.app.data.api.motorcycle.CreateMotorcycleRequest
 import com.betamotor.app.data.api.motorcycle.HistoryMotorcycleTrackingDataItem
 import com.betamotor.app.data.api.motorcycle.MotorcycleAccessoriesData
@@ -40,8 +42,17 @@ class MotorcycleViewModel @Inject constructor(
     private val _motorcycleAccessories = MutableStateFlow<MotorcycleAccessoriesData?>(null)
     val motorcycleAccessories: StateFlow<MotorcycleAccessoriesData?> = _motorcycleAccessories
 
+    private val _bookmarkMotorcycles = MutableStateFlow<List<BookmarksItem?>>(emptyList())
+    val bookmarkMotorcycles: StateFlow<List<BookmarksItem?>> = _bookmarkMotorcycles
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _isSecondLoading = MutableStateFlow(false)
+    val isSecondLoading: StateFlow<Boolean> = _isSecondLoading.asStateFlow()
+
+    private val _isThirdLoading = MutableStateFlow(false)
+    val isThirdLoading: StateFlow<Boolean> = _isThirdLoading.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -53,7 +64,6 @@ class MotorcycleViewModel @Inject constructor(
     suspend fun getMotorcycleTypes(): Pair<List<MotorcycleTypeItem?>, String> {
         _isLoading.value = true
         val result = apiService.getMotorcycleTypes()
-        Log.d("helow", result.first?.data.toString())
         var types: List<MotorcycleTypeItem?> = arrayListOf()
 
         if (result.first != null) {
@@ -65,37 +75,31 @@ class MotorcycleViewModel @Inject constructor(
         return Pair(_motorcycleTypes.value, result.second)
     }
 
-    fun getMotorcycles() {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val response = apiService.getMotorcycles()
-                _motorcycles.value = response.first ?: emptyList()
+    suspend fun getBookmarkMotorcycle(): Pair<List<BookmarksItem?>, String> {
+        _isSecondLoading.value = true
+        val result = apiService.getBookmarksMotorcycles()
+        var types: List<BookmarksItem?> = arrayListOf()
 
-//                // DEBUG ONLY
-//                val device = MotorcycleItem(
-//                    name = "My Motorcycle",
-//                    macAddress = "00:11:22:33:44:55",
-//                    deviceId = "1234567890",
-//                    motorcycleTypeId = 1
-//                )
-//
-//                val device2 = MotorcycleItem(
-//                    name = "My Motorcycle 2",
-//                    macAddress = "00:11:22:33:44:56",
-//                    deviceId = "1234567891",
-//                    motorcycleTypeId = 2
-//                )
-//
-//                _savedDevices.value = listOf(device, device2) + _savedDevices.value
-//                // END DEBUG ONLY
+        if (result.first != null) {
+            types = result.first ?: emptyList()
+        }
 
-                _error.value = null
-            } catch (e: Exception) {
-                _error.value = "Failed to load saved devices: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
+        _bookmarkMotorcycles.value = types
+        _isSecondLoading.value = false
+        return Pair(_bookmarkMotorcycles.value, result.second)
+    }
+
+    suspend  fun getMotorcycles() {
+        _isLoading.value = true
+        try {
+            val response = apiService.getMotorcycles()
+            _motorcycles.value = response.first ?: emptyList()
+
+            _error.value = response.second
+        } catch (e: Exception) {
+            _error.value = "Failed to load saved devices: ${e.message}"
+        } finally {
+            _isLoading.value = false
         }
     }
 
@@ -201,7 +205,7 @@ class MotorcycleViewModel @Inject constructor(
     }
 
     suspend fun getMotorcycleAccessories(vin: String): Boolean {
-        _isLoading.value = true
+        _isThirdLoading.value = true
 
         try {
             val resp = apiService.getMotorcyclesAccessories(vin)
@@ -219,7 +223,47 @@ class MotorcycleViewModel @Inject constructor(
             _error.value = "Failed to start tracking: ${e.message}"
             return false
         } finally {
-            _isLoading.value = false
+            _isThirdLoading.value = false
+        }
+    }
+
+    suspend fun saveBookmarksMotorcycle(data: BookmarkMotorcycleCreateRequest): Boolean {
+        _isSecondLoading.value = true
+        try {
+            val resp = apiService.saveBookmarksMotorcycle(data)
+
+            if (resp.first != true) {
+                throw Exception(resp.second)
+            }
+
+            _error.value = null
+
+            return true
+        } catch (e: Exception) {
+            _error.value = "Failed to save bookmark: ${e.message}"
+            return false
+        } finally {
+            _isSecondLoading.value = false
+        }
+    }
+
+    suspend fun deleteMotorcycle(id: Int): Boolean {
+        _isSecondLoading.value = true
+        try {
+            val resp = apiService.deleteBookmarksMotorcycle(id)
+
+            if (resp.first != true) {
+                throw Exception(resp.second)
+            }
+
+            _error.value = null
+
+            return true
+        } catch (e: Exception) {
+            _error.value = "Failed to delete bookmark: ${e.message}"
+            return false
+        } finally {
+            _isSecondLoading.value = false
         }
     }
 }
